@@ -942,8 +942,8 @@ function renderIngredients() {
       <td><span class="type-badge">${esc(ing.type||'—')}</span></td>
       <td style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}</td>
       <td><strong>${fmt2$(ing.price)}</strong></td>
-      <td class="price-per">${perOz !== null ? fmt$(perOz)+'/oz' : perLbm !== null ? fmt$(perLbm)+'/lb' : ing.unit==='each' ? fmt2$(ing.price/ing.qty)+'/ea' : '—'}</td>
-      <td class="price-per">${perMl !== null ? (costPerRecipeUnit(ing,'ml')*100).toFixed(4)+'¢/ml' : '—'}</td>
+      <td class="price-per">${perOz !== null ? fmt2$(perOz)+'/oz' : perLbm !== null ? fmt2$(perLbm)+'/lb' : ing.unit==='each' ? fmt2$(ing.price/ing.qty)+'/ea' : '—'}</td>
+      <td class="price-per">${perMl !== null ? fmt2$(costPerRecipeUnit(ing,'ml'))+'/ml' : '—'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
     </tr>`;
   }).join('');

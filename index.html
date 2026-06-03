@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>Cocktail COGS Calculator — Cornelly</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --navy:    #1a4f8a;
+      --navy2:   #2a6ab5;
+      --gold:    #c8a45a;
+      --gold-lt: #dfd0a8;
+      --cream:   #f2f5fa;
+      --white:   #ffffff;
+      --gray-lt: #e8edf5;
+      --gray:    #c8d0dc;
+      --text:    #1a2333;
+      --text-lt: #5a6578;
+      --red:     #c0392b;
+      --green:   #2e7d52;
+      --radius:  10px;
+      --shadow:  0 2px 12px rgba(26,79,138,.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e3d6e 0%, #1a4f8a 100%);
+      color: #fff; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 72px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { font-size: 24px; }
+    .brand-text h1 { font-size: 15px; font-weight: 700; letter-spacing: .3px; color: #fff; }
+    .brand-text p { font-size: 11px; color: rgba(255,255,255,.7); }
+    nav { display: flex; gap: 4px; }
+    nav button {
+      background: transparent; border: none; color: rgba(255,255,255,.75);
+      font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 6px;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    nav button:hover { background: rgba(255,255,255,.1); color: #fff; }
+    nav button.active { background: var(--gold); color: var(--navy); font-weight: 700; }
+
+    /* ── Layout ── */
+    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 80px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .page-sub { font-size: 12px; color: var(--text-lt); margin-bottom: 24px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 24px 28px; margin-bottom: 20px;
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px; padding-bottom: 12px; border-bottom: 2px solid var(--gold-lt);
+    }
+    .card-header h2 {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--navy2);
+    }
+    .collapsible-card { padding: 0; overflow: hidden; }
+    .collapsible-trigger {
+      width: 100%; background: none; border: none; padding: 16px 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; font-family: inherit; text-align: left;
+    }
+    .collapsible-trigger span:first-child { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--navy2); }
+    .collapsible-trigger .arrow { font-size: 11px; color: var(--text-lt); transition: transform .2s; }
+    .collapsible-body { display: none; padding: 0 22px 18px; border-top: 2px solid var(--gold-lt); }
+    .collapsible-body.open { display: block; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 7px;
+      padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: opacity .15s, transform .1s; font-family: inherit;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-gold { background: var(--gold); color: var(--navy); }
+    .btn-gold:hover { opacity: .88; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { opacity: .88; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--navy2); color: var(--navy2); }
+    .btn-outline:hover { background: var(--navy2); color: #fff; }
+    .btn-ghost { background: transparent; border: 1.5px solid var(--gray); color: var(--text-lt); }
+    .btn-ghost:hover { border-color: var(--navy2); color: var(--navy2); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+
+    /* ── Forms ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-lt); }
+    .field input, .field select, .field textarea {
+      border: 1.5px solid var(--gray); border-radius: 6px; padding: 9px 12px;
+      font-size: 13px; font-family: inherit; color: var(--text); background: var(--white); outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--navy2); }
+    .field input[type="number"] { -moz-appearance: textfield; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: var(--navy); color: #fff; padding: 9px 12px; text-align: left;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    }
+    th:first-child { border-radius: 6px 0 0 0; }
+    th:last-child { border-radius: 0 6px 0 0; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--gray-lt); }
+    tr:hover td { background: var(--gray-lt); }
+    tr:last-child td { border-bottom: none; }
+    .no-data td { text-align: center; color: var(--text-lt); padding: 28px; font-style: italic; }
+    .no-data:hover td { background: transparent; }
+
+    /* ── Filters ── */
+    .filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-bar input, .filter-bar select {
+      border: 1.5px solid var(--gray); border-radius: 6px; padding: 7px 11px;
+      font-size: 13px; font-family: inherit; outline: none; background: var(--white);
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: var(--navy2); }
+    .filter-bar input { flex: 1; min-width: 140px; }
+
+    /* ── Recipe Cards ── */
+    .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .recipe-card {
+      background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow);
+      overflow: hidden; cursor: pointer; transition: transform .15s, box-shadow .15s;
+      border: 2px solid transparent;
+    }
+    .recipe-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26,79,138,.18); }
+    .recipe-card.selected { border-color: var(--navy2); }
+    .recipe-card-header { background: var(--navy); color: #fff; padding: 14px 16px; }
+    .recipe-card-header h3 { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .recipe-card-header p { font-size: 11px; opacity: .75; }
+    .recipe-card-body { padding: 14px 16px; }
+    .recipe-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; }
+    .recipe-stat span:first-child { color: var(--text-lt); }
+    .recipe-stat span:last-child { font-weight: 600; }
+    .cogs-bar { height: 5px; background: var(--gray-lt); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .cogs-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+    .cogs-ok { background: var(--green); }
+    .cogs-warn { background: var(--gold); }
+    .cogs-over { background: var(--red); }
+
+    /* ── Recipe Builder ── */
+    .ingredient-row {
+      display: grid; grid-template-columns: 1fr 90px 90px 32px;
+      gap: 8px; align-items: end; margin-bottom: 8px;
+    }
+    .ingredient-row .cost-col { font-size: 12px; font-weight: 600; color: var(--navy); padding-bottom: 10px; text-align: right; white-space: nowrap; }
+    .ingredient-row .remove-btn {
+      background: transparent; border: 1.5px solid var(--gray); border-radius: 5px;
+      color: var(--text-lt); font-size: 16px; width: 32px; height: 36px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 1px;
+      transition: background .12s; font-family: inherit;
+    }
+    .ingredient-row .remove-btn:hover { background: var(--red); border-color: var(--red); color: #fff; }
+
+    /* ── Cost Summary Panel ── */
+    .cost-panel {
+      background: var(--gray-lt); border: 1.5px solid var(--gold-lt); border-radius: 8px;
+      padding: 16px 20px; margin-top: 16px;
+    }
+    .cost-panel h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-lt); margin-bottom: 12px; }
+    .cost-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .cost-row .label { color: var(--text-lt); }
+    .cost-row .value { font-weight: 600; }
+    .cost-row.total { border-top: 1px solid var(--gray); margin-top: 8px; padding-top: 8px; font-size: 15px; }
+    .cost-row.total .value { color: var(--navy); font-size: 18px; font-weight: 800; }
+    .cogs-indicator {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+      border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 6px;
+    }
+    .cogs-indicator.ok { background: #e8f5ee; color: var(--green); }
+    .cogs-indicator.warn { background: #fef9e7; color: #b07a00; }
+    .cogs-indicator.over { background: #fdecea; color: var(--red); }
+    .suggested-price { font-size: 11px; color: var(--text-lt); margin-top: 4px; }
+
+    /* ── In-House Ingredient ── */
+    .inhouse-card { border-left: 4px solid var(--gold); }
+    .inhouse-badge {
+      display: inline-block; background: var(--gold); color: var(--navy);
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: .3px; margin-left: 8px; vertical-align: middle;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 500; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 40px 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 12px; padding: 32px 36px;
+      max-width: 680px; width: 100%; margin: auto; box-shadow: 0 8px 40px rgba(0,0,0,.2);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .modal-header h2 { font-size: 18px; font-weight: 700; color: var(--navy); }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-lt); line-height: 1; }
+
+    /* ── Badges ── */
+    .type-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      background: var(--gray-lt); color: var(--text-lt);
+    }
+    .price-per { font-size: 11px; color: var(--text-lt); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--navy); color: #fff; padding: 12px 22px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,.2);
+      opacity: 0; transition: opacity .25s, transform .25s; z-index: 999; max-width: 360px; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error { background: var(--red); }
+    #toast.success { background: var(--green); }
+
+    /* ── Password Gate ── */
+    #gate {
+      position: fixed; inset: 0; z-index: 9999; background: var(--navy);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gate-box {
+      background: #fff; border-radius: 12px; padding: 40px 36px; text-align: center;
+      max-width: 320px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    }
+    .gate-box .gate-icon { font-size: 36px; margin-bottom: 12px; }
+    .gate-box h2 { color: var(--navy); font-size: 20px; margin-bottom: 6px; }
+    .gate-box p { color: var(--text-lt); font-size: 13px; margin-bottom: 22px; }
+    .gate-box input {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray); border-radius: 7px;
+      font-size: 14px; margin-bottom: 12px; outline: none; font-family: inherit;
+    }
+    .gate-box button {
+      width: 100%; padding: 11px; background: var(--navy); color: #fff; border: none;
+      border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .gate-error { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+
+    /* ── Section tabs (Ingredients type filter) ── */
+    .type-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .type-tab {
+      padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--gray); background: var(--white); color: var(--text-lt);
+      cursor: pointer; transition: all .15s;
+    }
+    .type-tab:hover { border-color: var(--navy2); color: var(--navy2); }
+    .type-tab.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+    @media (max-width: 600px) {
+      header { padding: 10px 14px; height: auto; flex-direction: column; gap: 8px; }
+      .brand-text h1 { font-size: 13px; }
+      nav { flex-wrap: wrap; justify-content: center; width: 100%; }
+      nav button { padding: 7px 10px; font-size: 11px; flex: 1 1 auto; text-align: center; }
+      main { padding: 16px 12px 60px; }
+      .card { padding: 16px 14px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+      .ingredient-row { grid-template-columns: 1fr 80px 80px 32px; }
+      .modal { padding: 24px 20px; }
+      .recipe-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Password Gate -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-icon">🍸</div>
+    <h2>Cornelly Calculator</h2>
+    <p>Enter your password to continue</p>
+    <input id="gate-input" type="password" placeholder="Password" />
+    <button onclick="checkGate()">Enter</button>
+    <div id="gate-error" class="gate-error">Incorrect password.</div>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <span class="brand-icon">🍸</span>
+    <div class="brand-text">
+      <h1>Cocktail COGS Calculator</h1>
+      <p>Cornelly Restaurant Group</p>
+    </div>
+  </div>
+  <nav>
+    <button id="nav-ingredients" class="active" onclick="showPage('ingredients')">Ingredients</button>
+    <button id="nav-inhouse" onclick="showPage('inhouse')">In-House</button>
+    <button id="nav-recipes" onclick="showPage('recipes')">Recipes</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── INGREDIENTS PAGE ── -->
+  <section id="page-ingredients" class="page active">
+    <div class="page-title">Master Ingredients List</div>
+    <div class="page-sub">All base ingredients. Prices update recipe costs automatically.</div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>All Ingredients (<span id="ing-count">0</span>)</h2>
+        <button class="btn btn-gold btn-sm" onclick="openIngModal()">+ Add Ingredient</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="ing-search" placeholder="Search ingredients…" oninput="renderIngredients()" />
+        <select id="ing-type-filter" onchange="renderIngredients()">
+          <option value="">All Types</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th>Type</th>
+              <th>Package</th>
+              <th>Price</th>
+              <th>$/oz</th>
+              <th>$/ml</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="ing-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── IN-HOUSE PAGE ── -->
+  <section id="page-inhouse" class="page">
+    <div class="page-title">In-House Ingredient Recipes</div>
+    <div class="page-sub">Build batched or infused ingredients from your master list. They automatically appear in the ingredient list.</div>
+
+    <div class="card collapsible-card" id="new-inhouse-card">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('new-inhouse-card')">
+        <span>Create New In-House Ingredient</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="collapsible-body" id="new-inhouse-body">
+        <div style="margin-top:16px;">
+          <div class="form-grid" style="margin-bottom:14px;">
+            <div class="field full">
+              <label>Ingredient Name</label>
+              <input type="text" id="ih-name" placeholder="e.g. Earl Grey Gin, House Syrup…" />
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:10px;">Source Ingredients</div>
+          <div id="ih-rows"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addIhRow()" style="margin-top:6px;">+ Add Ingredient</button>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-lt);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:10px;">Batch Output</div>
+            <div class="form-grid" style="max-width:360px;">
+              <div class="field">
+                <label>Output Quantity</label>
+                <input type="number" id="ih-batch-qty" min="0.01" step="0.01" placeholder="e.g. 750" oninput="updateIhCost()" />
+              </div>
+              <div class="field">
+                <label>Output Unit</label>
+                <select id="ih-batch-unit" onchange="updateIhCost()">
+                  <option value="ml">ml</option>
+                  <option value="l">l</option>
+                  <option value="oz" selected>oz</option>
+                  <option value="gal">gal</option>
+                  <option value="lbm">lbm</option>
+                  <option value="each">each</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Type</label>
+                <select id="ih-type">
+                  <option value="">— Select —</option>
+                </select>
+              </div>
+            </div>
+            <div class="cost-panel" style="max-width:360px;margin-top:12px;">
+              <div class="cost-row"><span class="label">Total ingredient cost</span><span class="value" id="ih-total-cost">—</span></div>
+              <div class="cost-row"><span class="label">Cost per <span id="ih-per-unit-lbl">oz</span></span><span class="value" id="ih-per-unit-cost">—</span></div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveInhouse()">Save & Add to Ingredients</button>
+            <button class="btn btn-outline" onclick="clearIhForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Saved In-House Ingredients (<span id="ih-count">0</span>)</h2>
+      </div>
+      <div id="ih-list"></div>
+    </div>
+  </section>
+
+  <!-- ── RECIPES PAGE ── -->
+  <section id="page-recipes" class="page">
+    <div class="page-title">Cocktail Recipes</div>
+    <div class="page-sub">Build recipes using your ingredients. Cost updates live as you type.</div>
+
+    <!-- Recipe Builder -->
+    <div class="card collapsible-card" id="new-recipe-card">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('new-recipe-card')">
+        <span>Build New Recipe</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="collapsible-body" id="new-recipe-body">
+        <div style="margin-top:16px;">
+          <div class="form-grid" style="margin-bottom:16px;">
+            <div class="field">
+              <label>Recipe Name</label>
+              <input type="text" id="rec-name" placeholder="e.g. Negroni Rosso" />
+            </div>
+            <div class="field">
+              <label>Menu Price ($)</label>
+              <input type="number" id="rec-price" min="0" step="0.01" placeholder="15.00" oninput="updateRecipeCost()" />
+            </div>
+            <div class="field">
+              <label>Target COGS %</label>
+              <input type="number" id="rec-cogs" min="1" max="100" step="1" value="25" oninput="updateRecipeCost()" />
+            </div>
+            <div class="field">
+              <label>Batch Size (servings)</label>
+              <input type="number" id="rec-batch" min="1" step="1" placeholder="1" value="1" oninput="updateRecipeCost()" />
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:10px;">Ingredients</div>
+          <div id="rec-rows"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addRecRow()" style="margin-top:6px;">+ Add Ingredient</button>
+          <div class="cost-panel" id="rec-cost-panel">
+            <h3>Cost Summary</h3>
+            <div id="rec-cost-rows"></div>
+            <div class="cost-row total">
+              <span class="label">Recipe Cost</span>
+              <span class="value" id="rec-total-cost">—</span>
+            </div>
+            <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div class="cogs-indicator" id="rec-cogs-badge">—</div>
+              <div class="suggested-price" id="rec-suggested">—</div>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--gray);">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:8px;">Batch View (<span id="rec-batch-lbl">1</span> servings)</div>
+              <div class="cost-row"><span class="label">Batch cost</span><span class="value" id="rec-batch-cost">—</span></div>
+              <div class="cost-row"><span class="label">Batch gross profit (at menu price)</span><span class="value" id="rec-batch-gp">—</span></div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveRecipe()">Save Recipe</button>
+            <button class="btn btn-outline" onclick="clearRecForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saved Recipes -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Saved Recipes (<span id="rec-count">0</span>)</h2>
+        <input type="text" id="rec-search" placeholder="Search…" oninput="renderRecipes()" style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 11px;font-size:12px;outline:none;width:160px;" />
+      </div>
+      <div id="rec-grid" class="recipe-grid"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Ingredient Modal (Add/Edit) -->
+<div class="modal-overlay" id="ing-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="ing-modal-title">Add Ingredient</h2>
+      <button class="modal-close" onclick="closeIngModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Ingredient Name</label>
+        <input type="text" id="ing-m-name" placeholder="e.g. Campari" />
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select id="ing-m-type">
+          <option value="">— Select —</option>
+          <option value="amaro / liqueur">Amaro / Liqueur</option>
+          <option value="bitters">Bitters</option>
+          <option value="brandy">Brandy</option>
+          <option value="dry ingredient">Dry Ingredient</option>
+          <option value="gin">Gin</option>
+          <option value="juice">Juice</option>
+          <option value="syrup">Syrup</option>
+          <option value="tequila">Tequila</option>
+          <option value="vermouth / wine">Vermouth / Wine</option>
+          <option value="vodka">Vodka</option>
+          <option value="wet ingredient">Wet Ingredient</option>
+          <option value="whiskey">Whiskey</option>
+          <option value="in-house">In-House</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Invoice Quantity</label>
+        <input type="number" id="ing-m-qty" min="0.001" step="any" placeholder="750" />
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <select id="ing-m-unit">
+          <option value="ml">ml</option>
+          <option value="l">l</option>
+          <option value="oz">oz</option>
+          <option value="gal">gal</option>
+          <option value="lbm">lbm (pounds)</option>
+          <option value="ozm">ozm (oz mass)</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="each">each</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Price ($)</label>
+        <input type="number" id="ing-m-price" min="0" step="0.01" placeholder="0.00" />
+      </div>
+      <div class="field" style="justify-content:flex-end;padding-top:18px;">
+        <div id="ing-m-preview" style="font-size:12px;color:var(--text-lt);"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveIngredient()">Save</button>
+      <button class="btn btn-outline" onclick="closeIngModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="ing-m-delete" onclick="deleteIngredient()" style="display:none;margin-left:auto;">Delete</button>
+    </div>
+    <input type="hidden" id="ing-m-id" value="" />
+  </div>
+</div>
+
+<!-- Recipe Detail Modal -->
+<div class="modal-overlay" id="rec-modal">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h2 id="rec-modal-title">Recipe</h2>
+      <button class="modal-close" onclick="closeRecModal()">×</button>
+    </div>
+    <div id="rec-modal-body"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="editRecipeFromModal()">✏ Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteRecipeFromModal()" style="margin-left:auto;">Delete Recipe</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeRecModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════════════
+const __fbConfig = {
+  apiKey: "AIzaSyCL2p3rFfCtSlD3xjLsZ8OrKD2hXhGGKXI",
+  authDomain: "cornelly-wholesale-ordering.firebaseapp.com",
+  projectId: "cornelly-wholesale-ordering",
+  storageBucket: "cornelly-wholesale-ordering.firebasestorage.app",
+  messagingSenderId: "627263395752",
+  appId: "1:627263395752:web:20e24634ff4cef091daf9d"
+};
+const __app = firebase.initializeApp(__fbConfig, 'cocktail');
+const __db  = firebase.firestore(__app);
+
+const __cache = { ingredients: [], recipes: [], inhouse: [] };
+
+async function initFirebase() {
+  try {
+    const [ings, recs, ihs] = await Promise.all([
+      __db.collection('cocktail_ingredients').get(),
+      __db.collection('cocktail_recipes').get(),
+      __db.collection('cocktail_inhouse').get(),
+    ]);
+    if (!ings.empty)  __cache.ingredients = ings.docs.map(d => ({id:d.id,...d.data()}));
+    else              await seedIngredients();
+    if (!recs.empty)  __cache.recipes     = recs.docs.map(d => ({id:d.id,...d.data()}));
+    else              await seedRecipes();
+    __cache.inhouse = ihs.docs.map(d => ({id:d.id,...d.data()}));
+  } catch(e) { console.error('Firebase init:', e); }
+}
+
+function saveIngredients() {
+  __cache.ingredients.forEach(ing => {
+    __db.collection('cocktail_ingredients').doc(ing.id).set(ing).catch(e=>console.error(e));
+  });
+}
+function saveRecipes() {
+  __cache.recipes.forEach(r => {
+    __db.collection('cocktail_recipes').doc(r.id).set(r).catch(e=>console.error(e));
+  });
+}
+function saveInhouseList() {
+  __cache.inhouse.forEach(ih => {
+    __db.collection('cocktail_inhouse').doc(ih.id).set(ih).catch(e=>console.error(e));
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// SEED DATA
+// ═══════════════════════════════════════════════════
+async function seedIngredients() {
+  const SEED = [
+    {name:'Amaro Averna',type:'amaro / liqueur',qty:1,unit:'l',price:47.69},
+    {name:'Amaro Nonino',type:'amaro / liqueur',qty:750,unit:'ml',price:44.99},
+    {name:'Amaro Sibona',type:'amaro / liqueur',qty:750,unit:'ml',price:29.16},
+    {name:'Aperol',type:'amaro / liqueur',qty:750,unit:'ml',price:24.99},
+    {name:'Braulio',type:'amaro / liqueur',qty:1,unit:'l',price:39.41},
+    {name:'Campari',type:'amaro / liqueur',qty:1,unit:'l',price:40.25},
+    {name:'Faccia Brutto Centerbe',type:'amaro / liqueur',qty:750,unit:'ml',price:44.09},
+    {name:'Fontbonne Herbal',type:'amaro / liqueur',qty:700,unit:'ml',price:49.66},
+    {name:'Italicus Bergamont',type:'amaro / liqueur',qty:750,unit:'ml',price:46.61},
+    {name:'Letterpress Limoncello',type:'amaro / liqueur',qty:750,unit:'ml',price:24.49},
+    {name:'Limoncello',type:'amaro / liqueur',qty:750,unit:'ml',price:24.31},
+    {name:'Luxardo Bitter Liqueur',type:'amaro / liqueur',qty:750,unit:'ml',price:25.57},
+    {name:'Luxardo Liquor',type:'amaro / liqueur',qty:750,unit:'ml',price:39.32},
+    {name:'Nonino Reserva',type:'amaro / liqueur',qty:750,unit:'ml',price:73.69},
+    {name:'St. Germain',type:'amaro / liqueur',qty:750,unit:'ml',price:35.49},
+    {name:'Amaro Amorino',type:'amaro / liqueur',qty:750,unit:'ml',price:26.59},
+    {name:'Strega Sambuca',type:'amaro / liqueur',qty:700,unit:'ml',price:28.97},
+    {name:'Chamomile Bitters',type:'amaro / liqueur',qty:200,unit:'ml',price:13.29},
+    {name:'Highside Rosina',type:'amaro / liqueur',qty:750,unit:'ml',price:25.40},
+    {name:'Topazio Mandarin',type:'amaro / liqueur',qty:700,unit:'ml',price:27.29},
+    {name:'Accompani Marigold',type:'amaro / liqueur',qty:750,unit:'ml',price:25.36},
+    {name:'Nonino Apperitivo',type:'amaro / liqueur',qty:750,unit:'ml',price:34.16},
+    {name:'Angostura Bitters',type:'bitters',qty:16,unit:'oz',price:25.89},
+    {name:'Fee Brothers Lemon Bitters',type:'bitters',qty:5,unit:'oz',price:11.19},
+    {name:'Grapefruit Bitters (Fee Brothers)',type:'bitters',qty:6.7,unit:'oz',price:12.87},
+    {name:'Hella Bitters Ginger',type:'bitters',qty:5,unit:'oz',price:12.00},
+    {name:'Orange Angostura Bitters',type:'bitters',qty:6.7,unit:'oz',price:16.09},
+    {name:'Vecchia Romagna Brandy',type:'brandy',qty:750,unit:'ml',price:28.50},
+    {name:'basil',type:'dry ingredient',qty:1,unit:'lbm',price:8.50},
+    {name:'cucumber',type:'dry ingredient',qty:10,unit:'lbm',price:30.27},
+    {name:'heirloom tomatoes',type:'dry ingredient',qty:10,unit:'lbm',price:50.70},
+    {name:'huckleberries',type:'dry ingredient',qty:1,unit:'lbm',price:19.00},
+    {name:'lemon peel',type:'dry ingredient',qty:1,unit:'each',price:0.20},
+    {name:'Luxardo Cherries',type:'dry ingredient',qty:1,unit:'each',price:0.10},
+    {name:'mint',type:'dry ingredient',qty:0.25,unit:'lbm',price:3.00},
+    {name:'mozzarella garnish',type:'dry ingredient',qty:1,unit:'each',price:0.50},
+    {name:'pineapple juice',type:'dry ingredient',qty:1,unit:'oz',price:0.18},
+    {name:'Sage',type:'dry ingredient',qty:0.25,unit:'lbm',price:15.00},
+    {name:'sugar (white)',type:'dry ingredient',qty:25,unit:'lbm',price:28.76},
+    {name:'Aviation Gin',type:'gin',qty:1,unit:'l',price:37.69},
+    {name:'Big Gin',type:'gin',qty:1,unit:'l',price:36.27},
+    {name:'Fremont Mischief Gin',type:'gin',qty:1,unit:'l',price:11.00},
+    {name:'Malfy Arancia',type:'gin',qty:750,unit:'ml',price:25.31},
+    {name:'Kapriol GF Gin',type:'gin',qty:700,unit:'ml',price:24.49},
+    {name:'grapefruit juice',type:'juice',qty:2,unit:'oz',price:0.75},
+    {name:'lemon juice',type:'juice',qty:1,unit:'oz',price:0.50},
+    {name:'lime juice',type:'juice',qty:1,unit:'oz',price:0.75},
+    {name:'Ginger Juice',type:'juice',qty:4.5,unit:'l',price:26.13},
+    {name:'orange juice',type:'juice',qty:2,unit:'oz',price:1.00},
+    {name:'barrel aged maple syrup (Smugglers Notch)',type:'syrup',qty:16,unit:'oz',price:38.35},
+    {name:'barrel aged maple syrup (Woodenville)',type:'syrup',qty:8.5,unit:'oz',price:20.99},
+    {name:'Simple Syrup',type:'syrup',qty:32,unit:'oz',price:1.20},
+    {name:'Espolon',type:'tequila',qty:750,unit:'ml',price:30.86},
+    {name:'Caneva Da Nani',type:'vermouth / wine',qty:750,unit:'ml',price:13.00},
+    {name:'Cochhi Di Torino',type:'vermouth / wine',qty:750,unit:'ml',price:22.00},
+    {name:'Fattoria Cerro Vin Santo',type:'vermouth / wine',qty:375,unit:'ml',price:27.50},
+    {name:'Noilly Prat Vermouth',type:'vermouth / wine',qty:750,unit:'ml',price:11.89},
+    {name:'Vecchio Florio Marsala',type:'vermouth / wine',qty:375,unit:'ml',price:8.74},
+    {name:'Cocchi Extra Dry',type:'vermouth / wine',qty:500,unit:'ml',price:17.49},
+    {name:'Elena di Torino Vermouth',type:'vermouth / wine',qty:1,unit:'l',price:23.09},
+    {name:'Jeio Prosecco DOC',type:'vermouth / wine',qty:750,unit:'ml',price:11.66},
+    {name:'Timerline Vodka',type:'vodka',qty:750,unit:'ml',price:23.31},
+    {name:'Verita Vodka',type:'vodka',qty:1,unit:'l',price:19.21},
+    {name:'olive oil',type:'wet ingredient',qty:3,unit:'l',price:26.99},
+    {name:'water',type:'wet ingredient',qty:1,unit:'oz',price:0.00},
+    {name:'Copperworks Single Malt',type:'whiskey',qty:750,unit:'ml',price:89.99},
+    {name:'Westland Single Malt',type:'whiskey',qty:750,unit:'ml',price:50.99},
+    {name:'Woodenville Bourbon',type:'whiskey',qty:1,unit:'l',price:33.50},
+    {name:'Woodenville Rye',type:'whiskey',qty:750,unit:'ml',price:30.23},
+  ];
+  const batch = __db.batch();
+  __cache.ingredients = SEED.map(s => {
+    const id = 'i_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const ref = __db.collection('cocktail_ingredients').doc(id);
+    batch.set(ref, {...s, id});
+    return {...s, id};
+  });
+  await batch.commit();
+}
+
+async function seedRecipes() {
+  const SEED = [
+    {name:'Ten Forward',menuPrice:16.00,targetCogs:25,batchSize:50,
+     ingredients:[{name:'Big Gin',qty:1.5,unit:'oz'},{name:'Italicus Bergamont',qty:0.75,unit:'oz'},{name:'Letterpress Limoncello',qty:0.75,unit:'oz'},{name:'Fee Brothers Lemon Bitters',qty:0.05,unit:'oz'}]},
+    {name:'Dr. G',menuPrice:13.50,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Woodenville Bourbon',qty:2.5,unit:'oz'},{name:'Amaro Nonino',qty:0.75,unit:'oz'},{name:'Luxardo Cherries',qty:1,unit:'each'}]},
+    {name:'Negroni Rosso',menuPrice:15.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Big Gin',qty:2.0,unit:'oz'},{name:'Campari',qty:1.0,unit:'oz'},{name:'Elena di Torino Vermouth',qty:0.75,unit:'oz'}]},
+    {name:'Negroni Bianco',menuPrice:15.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Kapriol GF Gin',qty:2.0,unit:'oz'},{name:'Cochhi Di Torino',qty:0.75,unit:'oz'},{name:'Accompani Marigold',qty:0.75,unit:'oz'}]},
+    {name:'Mandi Pandi',menuPrice:18.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Topazio Mandarin',qty:1.5,unit:'oz'},{name:'Verita Vodka',qty:1.0,unit:'oz'},{name:'lemon juice',qty:0.75,unit:'oz'}]},
+    {name:'Spring Theme',menuPrice:17.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Italicus Bergamont',qty:0.75,unit:'oz'},{name:'Nonino Apperitivo',qty:0.75,unit:'oz'},{name:'Jeio Prosecco DOC',qty:2.0,unit:'oz'},{name:'lime juice',qty:0.5,unit:'oz'}]},
+    {name:'Cornelly Negroni',menuPrice:15.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Big Gin',qty:2.0,unit:'oz'},{name:'Highside Rosina',qty:1.0,unit:'oz'},{name:'Cochhi Di Torino',qty:0.75,unit:'oz'}]},
+    {name:'Gin Martini',menuPrice:16.00,targetCogs:25,batchSize:20,
+     ingredients:[{name:'Aviation Gin',qty:2.5,unit:'oz'},{name:'Cocchi Extra Dry',qty:0.5,unit:'oz'}]},
+  ];
+  const batch = __db.batch();
+  __cache.recipes = SEED.map(s => {
+    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const ref = __db.collection('cocktail_recipes').doc(id);
+    batch.set(ref, {...s, id});
+    return {...s, id};
+  });
+  await batch.commit();
+}
+
+// ═══════════════════════════════════════════════════
+// UNIT CONVERSION MATH
+// ═══════════════════════════════════════════════════
+const ML_PER_OZ  = 29.5735;
+const ML_PER_L   = 1000;
+const ML_PER_GAL = 3785.41;
+const G_PER_LBM  = 453.592;
+const G_PER_OZM  = 28.3495;
+const G_PER_KG   = 1000;
+
+function toMl(qty, unit) {
+  if (unit === 'ml')  return qty;
+  if (unit === 'l')   return qty * ML_PER_L;
+  if (unit === 'oz')  return qty * ML_PER_OZ;
+  if (unit === 'gal') return qty * ML_PER_GAL;
+  return null;
+}
+function fromMl(ml, unit) {
+  if (unit === 'ml')  return ml;
+  if (unit === 'l')   return ml / ML_PER_L;
+  if (unit === 'oz')  return ml / ML_PER_OZ;
+  if (unit === 'gal') return ml / ML_PER_GAL;
+  return null;
+}
+function toG(qty, unit) {
+  if (unit === 'g')   return qty;
+  if (unit === 'kg')  return qty * G_PER_KG;
+  if (unit === 'lbm') return qty * G_PER_LBM;
+  if (unit === 'ozm') return qty * G_PER_OZM;
+  return null;
+}
+function fromG(g, unit) {
+  if (unit === 'g')   return g;
+  if (unit === 'kg')  return g / G_PER_KG;
+  if (unit === 'lbm') return g / G_PER_LBM;
+  if (unit === 'ozm') return g / G_PER_OZM;
+  return null;
+}
+
+function convertUnits(qty, fromUnit, toUnit) {
+  if (!qty || !fromUnit || !toUnit) return null;
+  if (fromUnit === toUnit) return qty;
+  if (fromUnit === 'each' || toUnit === 'each') return (fromUnit === toUnit) ? qty : null;
+  const ml = toMl(qty, fromUnit);
+  if (ml !== null) { const r = fromMl(ml, toUnit); if (r !== null) return r; }
+  const g = toG(qty, fromUnit);
+  if (g !== null) { const r = fromG(g, toUnit); if (r !== null) return r; }
+  return null;
+}
+
+// Cost of 1 recipeUnit of an ingredient
+function costPerRecipeUnit(ing, recipeUnit) {
+  if (!ing) return 0;
+  const { qty, unit, price } = ing;
+  if (recipeUnit === 'each') return (unit === 'each') ? price / qty : 0;
+  if (unit === 'each') return 0;
+  const invoiceInRecipeUnits = convertUnits(qty, unit, recipeUnit);
+  if (!invoiceInRecipeUnits || invoiceInRecipeUnits <= 0) return 0;
+  return price / invoiceInRecipeUnits;
+}
+
+function ingredientCost(ingName, recipeQty, recipeUnit) {
+  const ing = findIngredient(ingName);
+  if (!ing) return 0;
+  const perUnit = costPerRecipeUnit(ing, recipeUnit);
+  return perUnit * (recipeQty || 0);
+}
+
+function findIngredient(name) {
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  return __cache.ingredients.find(i => i.name.trim().toLowerCase() === n) || null;
+}
+
+function fmt$(v) { return '$' + (v||0).toFixed(4); }
+function fmt2$(v) { return '$' + (v||0).toFixed(2); }
+
+// ═══════════════════════════════════════════════════
+// GATE
+// ═══════════════════════════════════════════════════
+(function() {
+  if (sessionStorage.getItem('cocktailGate') === '1') {
+    document.getElementById('gate').style.display = 'none';
+  }
+  document.getElementById('gate-input').addEventListener('keydown', e => { if(e.key==='Enter') checkGate(); });
+})();
+
+async function checkGate() {
+  const pw = document.getElementById('gate-input').value;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  const hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hash === '79737ac46dad121166483e084a0727e5d6769fb47fa9b0b627eba4107e696078') {
+    sessionStorage.setItem('cocktailGate','1');
+    document.getElementById('gate').style.display='none';
+  } else {
+    document.getElementById('gate-error').style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'ingredients') renderIngredients();
+  if (name === 'inhouse')     { renderInhouse(); populateIhTypeDropdown(); }
+  if (name === 'recipes')     { renderRecipes(); populateRecDropdowns(); }
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className='', 3500);
+}
+
+// ═══════════════════════════════════════════════════
+// COLLAPSIBLE
+// ═══════════════════════════════════════════════════
+function toggleCollapsible(cardId) {
+  const body = document.getElementById(cardId).querySelector('.collapsible-body');
+  const arrow = document.getElementById(cardId).querySelector('.arrow');
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  arrow.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// ═══════════════════════════════════════════════════
+// INGREDIENTS PAGE
+// ═══════════════════════════════════════════════════
+function renderIngredients() {
+  const search = document.getElementById('ing-search')?.value?.toLowerCase() || '';
+  const typeF = document.getElementById('ing-type-filter')?.value || '';
+
+  let ings = [...__cache.ingredients].sort((a,b) => {
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.name.localeCompare(b.name);
+  });
+  if (search) ings = ings.filter(i => i.name.toLowerCase().includes(search) || i.type.toLowerCase().includes(search));
+  if (typeF) ings = ings.filter(i => i.type === typeF);
+
+  document.getElementById('ing-count').textContent = ings.length;
+
+  // Populate type dropdown
+  const sel = document.getElementById('ing-type-filter');
+  const currentVal = sel.value;
+  const types = [...new Set(__cache.ingredients.map(i=>i.type).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Types</option>' + types.map(t=>`<option value="${esc(t)}"${t===currentVal?' selected':''}>${esc(t)}</option>`).join('');
+
+  const tbody = document.getElementById('ing-body');
+  if (!ings.length) {
+    tbody.innerHTML = '<tr class="no-data"><td colspan="7">No ingredients found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = ings.map(ing => {
+    const isInhouse = ing.type === 'in-house';
+    const perOz = ing.unit !== 'each' && ing.unit !== 'lbm' && ing.unit !== 'ozm' && ing.unit !== 'g' && ing.unit !== 'kg'
+      ? costPerRecipeUnit(ing, 'oz')
+      : null;
+    const perMl = ing.unit !== 'each' && ing.unit !== 'lbm' && ing.unit !== 'ozm' && ing.unit !== 'g' && ing.unit !== 'kg'
+      ? costPerRecipeUnit(ing, 'ml')
+      : null;
+    const perLbm = (ing.unit === 'lbm' || ing.unit === 'ozm' || ing.unit === 'g' || ing.unit === 'kg')
+      ? costPerRecipeUnit(ing, 'lbm')
+      : null;
+    return `<tr>
+      <td><strong>${esc(ing.name)}</strong>${isInhouse?'<span class="inhouse-badge">in-house</span>':''}</td>
+      <td><span class="type-badge">${esc(ing.type||'—')}</span></td>
+      <td style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}</td>
+      <td><strong>${fmt2$(ing.price)}</strong></td>
+      <td class="price-per">${perOz !== null ? fmt$(perOz)+'/oz' : perLbm !== null ? fmt$(perLbm)+'/lb' : ing.unit==='each' ? fmt2$(ing.price/ing.qty)+'/ea' : '—'}</td>
+      <td class="price-per">${perMl !== null ? (costPerRecipeUnit(ing,'ml')*100).toFixed(4)+'¢/ml' : '—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// INGREDIENT MODAL
+// ═══════════════════════════════════════════════════
+let _editIngId = null;
+
+function openIngModal(id) {
+  _editIngId = id || null;
+  const ing = id ? __cache.ingredients.find(i=>i.id===id) : null;
+  document.getElementById('ing-modal-title').textContent = ing ? 'Edit Ingredient' : 'Add Ingredient';
+  document.getElementById('ing-m-name').value  = ing?.name || '';
+  document.getElementById('ing-m-type').value  = ing?.type || '';
+  document.getElementById('ing-m-qty').value   = ing?.qty || '';
+  document.getElementById('ing-m-unit').value  = ing?.unit || 'ml';
+  document.getElementById('ing-m-price').value = ing?.price || '';
+  document.getElementById('ing-m-id').value    = id || '';
+  document.getElementById('ing-m-delete').style.display = id ? 'inline-flex' : 'none';
+  document.getElementById('ing-modal').classList.add('open');
+  updateIngModalPreview();
+}
+function closeIngModal() {
+  document.getElementById('ing-modal').classList.remove('open');
+  _editIngId = null;
+}
+function updateIngModalPreview() {
+  const qty = parseFloat(document.getElementById('ing-m-qty').value);
+  const unit = document.getElementById('ing-m-unit').value;
+  const price = parseFloat(document.getElementById('ing-m-price').value);
+  const prev = document.getElementById('ing-m-preview');
+  if (qty > 0 && price >= 0 && unit) {
+    const fakeIng = {qty, unit, price};
+    const perOz = toMl(1, unit) !== null ? costPerRecipeUnit(fakeIng, 'oz') : null;
+    const perLbm = toG(1, unit) !== null ? costPerRecipeUnit(fakeIng, 'lbm') : null;
+    let lines = [];
+    if (perOz !== null) lines.push(fmt$(perOz) + ' / oz');
+    if (perLbm !== null) lines.push(fmt$(perLbm) + ' / lb');
+    if (unit === 'each') lines.push(fmt2$(price/qty) + ' / each');
+    prev.textContent = lines.join(' · ');
+  } else { prev.textContent = ''; }
+}
+['ing-m-qty','ing-m-unit','ing-m-price'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateIngModalPreview);
+  });
+});
+
+function saveIngredient() {
+  const name  = document.getElementById('ing-m-name').value.trim();
+  const type  = document.getElementById('ing-m-type').value;
+  const qty   = parseFloat(document.getElementById('ing-m-qty').value);
+  const unit  = document.getElementById('ing-m-unit').value;
+  const price = parseFloat(document.getElementById('ing-m-price').value);
+  if (!name) { showToast('Please enter an ingredient name.','error'); return; }
+  if (!qty || qty <= 0) { showToast('Please enter a valid quantity.','error'); return; }
+  if (!unit) { showToast('Please select a unit.','error'); return; }
+  if (isNaN(price) || price < 0) { showToast('Please enter a valid price.','error'); return; }
+
+  if (_editIngId) {
+    const idx = __cache.ingredients.findIndex(i=>i.id===_editIngId);
+    if (idx >= 0) {
+      __cache.ingredients[idx] = {...__cache.ingredients[idx], name, type, qty, unit, price};
+      __db.collection('cocktail_ingredients').doc(_editIngId).update({name,type,qty,unit,price}).catch(e=>console.error(e));
+      showToast('Ingredient updated!','success');
+    }
+  } else {
+    const id = 'i_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const ing = {id, name, type, qty, unit, price};
+    __cache.ingredients.push(ing);
+    __db.collection('cocktail_ingredients').doc(id).set(ing).catch(e=>console.error(e));
+    showToast('Ingredient added!','success');
+  }
+  closeIngModal();
+  renderIngredients();
+}
+
+function deleteIngredient() {
+  if (!_editIngId) return;
+  const ing = __cache.ingredients.find(i=>i.id===_editIngId);
+  if (!confirm(`Delete "${ing?.name}"? This cannot be undone.`)) return;
+  __cache.ingredients = __cache.ingredients.filter(i=>i.id!==_editIngId);
+  __db.collection('cocktail_ingredients').doc(_editIngId).delete().catch(e=>console.error(e));
+  closeIngModal();
+  renderIngredients();
+  showToast('Ingredient deleted.','');
+}
+
+// ═══════════════════════════════════════════════════
+// IN-HOUSE PAGE
+// ═══════════════════════════════════════════════════
+let _ihRowCount = 0;
+
+function populateIhTypeDropdown() {
+  const sel = document.getElementById('ih-type');
+  const types = [...new Set(__cache.ingredients.map(i=>i.type).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">— Select Type —</option>' + types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('') + '<option value="in-house">in-house</option>';
+}
+
+function addIhRow(ingName='', qty='', unit='oz') {
+  _ihRowCount++;
+  const idx = _ihRowCount;
+  const container = document.getElementById('ih-rows');
+  const div = document.createElement('div');
+  div.className = 'ingredient-row';
+  div.id = 'ih-row-' + idx;
+  div.innerHTML = `
+    <div class="field">
+      <label style="font-size:10px;">Ingredient</label>
+      <input type="text" id="ih-ing-${idx}" value="${esc(ingName)}" placeholder="Start typing…" list="ing-datalist" oninput="updateIhCost()" />
+    </div>
+    <div class="field">
+      <label style="font-size:10px;">Qty</label>
+      <input type="number" id="ih-qty-${idx}" value="${qty}" min="0" step="any" placeholder="0" oninput="updateIhCost()" />
+    </div>
+    <div class="field">
+      <label style="font-size:10px;">Unit</label>
+      <select id="ih-unit-${idx}" onchange="updateIhCost()">
+        ${unitOptions(unit)}
+      </select>
+    </div>
+    <button class="remove-btn" onclick="removeIhRow(${idx})" title="Remove">×</button>
+  `;
+  container.appendChild(div);
+  ensureDatalist();
+}
+
+function removeIhRow(idx) {
+  const el = document.getElementById('ih-row-' + idx);
+  if (el) el.remove();
+  updateIhCost();
+}
+
+function updateIhCost() {
+  const batchQty  = parseFloat(document.getElementById('ih-batch-qty').value) || 0;
+  const batchUnit = document.getElementById('ih-batch-unit').value;
+  document.getElementById('ih-per-unit-lbl').textContent = batchUnit;
+
+  let total = 0;
+  document.querySelectorAll('[id^="ih-row-"]').forEach(row => {
+    const idx = row.id.replace('ih-row-','');
+    const ingName = document.getElementById('ih-ing-' + idx)?.value || '';
+    const qty = parseFloat(document.getElementById('ih-qty-' + idx)?.value) || 0;
+    const unit = document.getElementById('ih-unit-' + idx)?.value || 'oz';
+    total += ingredientCost(ingName, qty, unit);
+  });
+
+  document.getElementById('ih-total-cost').textContent = fmt2$(total);
+  if (batchQty > 0 && total > 0) {
+    const perUnit = total / batchQty;
+    document.getElementById('ih-per-unit-cost').textContent = fmt$(perUnit) + ' / ' + batchUnit;
+  } else {
+    document.getElementById('ih-per-unit-cost').textContent = '—';
+  }
+}
+
+function saveInhouse() {
+  const name = document.getElementById('ih-name').value.trim();
+  const batchQty = parseFloat(document.getElementById('ih-batch-qty').value);
+  const batchUnit = document.getElementById('ih-batch-unit').value;
+  const itype = document.getElementById('ih-type').value;
+  if (!name) { showToast('Please enter a name.','error'); return; }
+  if (!batchQty || batchQty <= 0) { showToast('Please enter a batch output quantity.','error'); return; }
+
+  const ings = [];
+  let total = 0;
+  document.querySelectorAll('[id^="ih-row-"]').forEach(row => {
+    const idx = row.id.replace('ih-row-','');
+    const ingName = document.getElementById('ih-ing-' + idx)?.value?.trim() || '';
+    const qty = parseFloat(document.getElementById('ih-qty-' + idx)?.value) || 0;
+    const unit = document.getElementById('ih-unit-' + idx)?.value || 'oz';
+    if (ingName && qty > 0) {
+      const cost = ingredientCost(ingName, qty, unit);
+      ings.push({name: ingName, qty, unit, cost});
+      total += cost;
+    }
+  });
+  if (!ings.length) { showToast('Please add at least one ingredient.','error'); return; }
+
+  const pricePerUnit = total / batchQty;
+
+  // Save in-house recipe
+  const ihId = 'ih_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const ihRec = {id: ihId, name, ingredients: ings, batchQty, batchUnit, totalCost: total, pricePerUnit, type: itype};
+  __cache.inhouse.push(ihRec);
+  __db.collection('cocktail_inhouse').doc(ihId).set(ihRec).catch(e=>console.error(e));
+
+  // Add to master ingredients list
+  const ingId = 'i_ih_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const newIng = {id: ingId, name, type: itype || 'in-house', qty: batchQty, unit: batchUnit, price: total, inhouseId: ihId};
+  // Remove existing with same name if any
+  const existIdx = __cache.ingredients.findIndex(i=>i.name.toLowerCase()===name.toLowerCase());
+  if (existIdx >= 0) {
+    const oldId = __cache.ingredients[existIdx].id;
+    __db.collection('cocktail_ingredients').doc(oldId).delete().catch(e=>console.error(e));
+    __cache.ingredients.splice(existIdx, 1);
+  }
+  __cache.ingredients.push(newIng);
+  __db.collection('cocktail_ingredients').doc(ingId).set(newIng).catch(e=>console.error(e));
+
+  showToast(`"${name}" saved and added to ingredients!`,'success');
+  clearIhForm();
+  renderInhouse();
+}
+
+function clearIhForm() {
+  document.getElementById('ih-name').value = '';
+  document.getElementById('ih-batch-qty').value = '';
+  document.getElementById('ih-rows').innerHTML = '';
+  _ihRowCount = 0;
+  document.getElementById('ih-total-cost').textContent = '—';
+  document.getElementById('ih-per-unit-cost').textContent = '—';
+  addIhRow();
+}
+
+function renderInhouse() {
+  const ihs = __cache.inhouse;
+  document.getElementById('ih-count').textContent = ihs.length;
+  const container = document.getElementById('ih-list');
+  if (!ihs.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-lt);padding:28px;font-style:italic;">No in-house ingredients yet.</div>';
+    return;
+  }
+  container.innerHTML = ihs.map(ih => `
+    <div class="card inhouse-card" style="margin-bottom:14px;padding:18px 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <div>
+          <strong style="font-size:15px;">${esc(ih.name)}</strong><span class="inhouse-badge">in-house</span>
+          <div style="font-size:12px;color:var(--text-lt);margin-top:3px;">Batch: ${ih.batchQty} ${esc(ih.batchUnit)} · Total cost: ${fmt2$(ih.totalCost)} · ${fmt$(ih.pricePerUnit)}/${esc(ih.batchUnit)}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteInhouse('${esc(ih.id)}')">Delete</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-lt);">
+        ${ih.ingredients.map(i=>`${esc(i.name)}: ${i.qty} ${esc(i.unit)} = ${fmt2$(i.cost)}`).join(' &nbsp;·&nbsp; ')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteInhouse(id) {
+  const ih = __cache.inhouse.find(i=>i.id===id);
+  if (!confirm(`Delete in-house ingredient "${ih?.name}"?`)) return;
+  __cache.inhouse = __cache.inhouse.filter(i=>i.id!==id);
+  __db.collection('cocktail_inhouse').doc(id).delete().catch(e=>console.error(e));
+  // Remove from master list
+  const mIdx = __cache.ingredients.findIndex(i=>i.inhouseId===id);
+  if (mIdx >= 0) {
+    __db.collection('cocktail_ingredients').doc(__cache.ingredients[mIdx].id).delete().catch(e=>console.error(e));
+    __cache.ingredients.splice(mIdx,1);
+  }
+  renderInhouse();
+  showToast('In-house ingredient deleted.');
+}
+
+// ═══════════════════════════════════════════════════
+// RECIPES PAGE
+// ═══════════════════════════════════════════════════
+let _recRowCount = 0;
+let _viewRecipeId = null;
+
+function populateRecDropdowns() { /* handled inline via datalist */ ensureDatalist(); }
+
+function addRecRow(ingName='', qty='', unit='oz') {
+  _recRowCount++;
+  const idx = _recRowCount;
+  const container = document.getElementById('rec-rows');
+  const div = document.createElement('div');
+  div.className = 'ingredient-row';
+  div.id = 'rec-row-' + idx;
+  div.innerHTML = `
+    <div class="field">
+      <label style="font-size:10px;">Ingredient</label>
+      <input type="text" id="rec-ing-${idx}" value="${esc(ingName)}" placeholder="Start typing…" list="ing-datalist" oninput="updateRecipeCost()" />
+    </div>
+    <div class="field">
+      <label style="font-size:10px;">Qty</label>
+      <input type="number" id="rec-qty-${idx}" value="${qty}" min="0" step="any" placeholder="0" oninput="updateRecipeCost()" style="width:100%;"/>
+    </div>
+    <div class="field">
+      <label style="font-size:10px;">Unit</label>
+      <select id="rec-unit-${idx}" onchange="updateRecipeCost()">
+        ${unitOptions(unit)}
+      </select>
+    </div>
+    <button class="remove-btn" onclick="removeRecRow(${idx})" title="Remove">×</button>
+  `;
+  container.appendChild(div);
+}
+
+function removeRecRow(idx) {
+  const el = document.getElementById('rec-row-' + idx);
+  if (el) el.remove();
+  updateRecipeCost();
+}
+
+function updateRecipeCost() {
+  const menuPrice  = parseFloat(document.getElementById('rec-price').value) || 0;
+  const targetCogs = (parseFloat(document.getElementById('rec-cogs').value) || 25) / 100;
+  const batchSize  = parseInt(document.getElementById('rec-batch').value) || 1;
+  document.getElementById('rec-batch-lbl').textContent = batchSize;
+
+  let totalCost = 0;
+  const costRows = [];
+
+  document.querySelectorAll('[id^="rec-row-"]').forEach(row => {
+    const idx = row.id.replace('rec-row-','');
+    const ingName = document.getElementById('rec-ing-' + idx)?.value?.trim() || '';
+    const qty = parseFloat(document.getElementById('rec-qty-' + idx)?.value) || 0;
+    const unit = document.getElementById('rec-unit-' + idx)?.value || 'oz';
+    if (ingName && qty > 0) {
+      const cost = ingredientCost(ingName, qty, unit);
+      totalCost += cost;
+      if (cost > 0 || findIngredient(ingName)) {
+        costRows.push(`<div class="cost-row"><span class="label">${esc(ingName)} (${qty} ${unit})</span><span class="value">${fmt$(cost)}</span></div>`);
+      }
+    }
+  });
+
+  document.getElementById('rec-cost-rows').innerHTML = costRows.join('');
+  document.getElementById('rec-total-cost').textContent = fmt2$(totalCost);
+
+  const badge = document.getElementById('rec-cogs-badge');
+  const suggEl = document.getElementById('rec-suggested');
+  if (totalCost > 0) {
+    const actualCogs = menuPrice > 0 ? totalCost / menuPrice : null;
+    const suggested = totalCost / targetCogs;
+    if (actualCogs !== null) {
+      const pct = (actualCogs * 100).toFixed(1);
+      const cls = actualCogs <= targetCogs ? 'ok' : actualCogs <= targetCogs * 1.15 ? 'warn' : 'over';
+      badge.className = 'cogs-indicator ' + cls;
+      badge.textContent = pct + '% COGS';
+    } else {
+      badge.className = 'cogs-indicator warn';
+      badge.textContent = 'Set menu price';
+    }
+    suggEl.textContent = `Suggested price at ${Math.round(targetCogs*100)}% COGS: ${fmt2$(suggested)}`;
+  } else {
+    badge.className = 'cogs-indicator';
+    badge.textContent = '—';
+    suggEl.textContent = '';
+  }
+
+  document.getElementById('rec-batch-cost').textContent = fmt2$(totalCost * batchSize);
+  const batchGp = menuPrice > 0 ? (menuPrice - totalCost) * batchSize : null;
+  document.getElementById('rec-batch-gp').textContent = batchGp !== null ? fmt2$(batchGp) : '—';
+}
+
+function saveRecipe() {
+  const name = document.getElementById('rec-name').value.trim();
+  const menuPrice = parseFloat(document.getElementById('rec-price').value) || 0;
+  const targetCogs = parseFloat(document.getElementById('rec-cogs').value) || 25;
+  const batchSize = parseInt(document.getElementById('rec-batch').value) || 1;
+  if (!name) { showToast('Please enter a recipe name.','error'); return; }
+
+  const ings = [];
+  document.querySelectorAll('[id^="rec-row-"]').forEach(row => {
+    const idx = row.id.replace('rec-row-','');
+    const ingName = document.getElementById('rec-ing-' + idx)?.value?.trim() || '';
+    const qty = parseFloat(document.getElementById('rec-qty-' + idx)?.value) || 0;
+    const unit = document.getElementById('rec-unit-' + idx)?.value || 'oz';
+    if (ingName && qty > 0) ings.push({name: ingName, qty, unit});
+  });
+  if (!ings.length) { showToast('Please add at least one ingredient.','error'); return; }
+
+  // Check if editing
+  const editId = document.getElementById('rec-rows').dataset.editId;
+  if (editId) {
+    const idx = __cache.recipes.findIndex(r=>r.id===editId);
+    if (idx >= 0) {
+      __cache.recipes[idx] = {...__cache.recipes[idx], name, menuPrice, targetCogs, batchSize, ingredients: ings};
+      __db.collection('cocktail_recipes').doc(editId).update({name, menuPrice, targetCogs, batchSize, ingredients: ings}).catch(e=>console.error(e));
+      showToast('Recipe updated!','success');
+      delete document.getElementById('rec-rows').dataset.editId;
+    }
+  } else {
+    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const rec = {id, name, menuPrice, targetCogs, batchSize, ingredients: ings};
+    __cache.recipes.push(rec);
+    __db.collection('cocktail_recipes').doc(id).set(rec).catch(e=>console.error(e));
+    showToast('Recipe saved!','success');
+  }
+
+  clearRecForm();
+  renderRecipes();
+
+  // Close builder
+  const body = document.getElementById('new-recipe-body');
+  const arrow = document.getElementById('new-recipe-card').querySelector('.arrow');
+  body.classList.remove('open');
+  arrow.style.transform = '';
+}
+
+function clearRecForm() {
+  document.getElementById('rec-name').value = '';
+  document.getElementById('rec-price').value = '';
+  document.getElementById('rec-cogs').value = '25';
+  document.getElementById('rec-batch').value = '1';
+  document.getElementById('rec-rows').innerHTML = '';
+  delete document.getElementById('rec-rows').dataset.editId;
+  _recRowCount = 0;
+  document.getElementById('rec-cost-rows').innerHTML = '';
+  document.getElementById('rec-total-cost').textContent = '—';
+  document.getElementById('rec-cogs-badge').className = 'cogs-indicator';
+  document.getElementById('rec-cogs-badge').textContent = '—';
+  document.getElementById('rec-suggested').textContent = '';
+  document.getElementById('rec-batch-cost').textContent = '—';
+  document.getElementById('rec-batch-gp').textContent = '—';
+  addRecRow();
+}
+
+function renderRecipes() {
+  const search = document.getElementById('rec-search')?.value?.toLowerCase() || '';
+  let recs = [...__cache.recipes];
+  if (search) recs = recs.filter(r => r.name.toLowerCase().includes(search));
+  recs.sort((a,b) => a.name.localeCompare(b.name));
+
+  document.getElementById('rec-count').textContent = recs.length;
+  const grid = document.getElementById('rec-grid');
+
+  if (!recs.length) {
+    grid.innerHTML = '<div style="text-align:center;color:var(--text-lt);padding:28px;font-style:italic;grid-column:1/-1;">No recipes yet. Build your first recipe above.</div>';
+    return;
+  }
+
+  grid.innerHTML = recs.map(rec => {
+    const totalCost = rec.ingredients.reduce((s,i) => s + ingredientCost(i.name, i.qty, i.unit), 0);
+    const cogs = rec.menuPrice > 0 ? totalCost / rec.menuPrice : null;
+    const cogsPct = cogs !== null ? (cogs*100).toFixed(1) : '—';
+    const cogsClass = cogs === null ? '' : cogs <= rec.targetCogs/100 ? 'cogs-ok' : cogs <= rec.targetCogs/100 * 1.15 ? 'cogs-warn' : 'cogs-over';
+    const cogsBarWidth = cogs !== null ? Math.min(100, cogs*100 / (rec.targetCogs||25) * 100).toFixed(1) : 0;
+    return `<div class="recipe-card" onclick="viewRecipe('${esc(rec.id)}')">
+      <div class="recipe-card-header">
+        <h3>${esc(rec.name)}</h3>
+        <p>${rec.ingredients.length} ingredient${rec.ingredients.length!==1?'s':''}</p>
+      </div>
+      <div class="recipe-card-body">
+        <div class="recipe-stat"><span>Recipe cost</span><span>${fmt2$(totalCost)}</span></div>
+        <div class="recipe-stat"><span>Menu price</span><span>${rec.menuPrice>0?fmt2$(rec.menuPrice):'—'}</span></div>
+        <div class="recipe-stat"><span>COGS</span><span style="color:${cogs===null?'inherit':cogs<=(rec.targetCogs||25)/100?'var(--green)':cogs<=(rec.targetCogs||25)/100*1.15?'#b07a00':'var(--red)'}">${cogsPct}%</span></div>
+        <div class="recipe-stat"><span>Gross profit</span><span>${rec.menuPrice>0?fmt2$(rec.menuPrice-totalCost):'—'}</span></div>
+        <div class="cogs-bar"><div class="cogs-bar-fill ${cogsClass}" style="width:${cogsBarWidth}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Recipe Detail Modal
+function viewRecipe(id) {
+  const rec = __cache.recipes.find(r=>r.id===id);
+  if (!rec) return;
+  _viewRecipeId = id;
+
+  const totalCost = rec.ingredients.reduce((s,i) => s + ingredientCost(i.name, i.qty, i.unit), 0);
+  const cogs = rec.menuPrice > 0 ? (totalCost/rec.menuPrice*100).toFixed(1) : null;
+  const gp = rec.menuPrice > 0 ? rec.menuPrice - totalCost : null;
+  const suggested = totalCost / ((rec.targetCogs||25)/100);
+
+  document.getElementById('rec-modal-title').textContent = rec.name;
+  document.getElementById('rec-modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:12px;">Ingredients</div>
+        ${rec.ingredients.map(i => {
+          const cost = ingredientCost(i.name, i.qty, i.unit);
+          return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-lt);font-size:13px;">
+            <span><strong>${esc(i.name)}</strong> <span style="color:var(--text-lt);">${i.qty} ${esc(i.unit)}</span></span>
+            <span style="font-weight:600;">${fmt$(cost)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div>
+        <div class="cost-panel">
+          <h3>Cost Breakdown</h3>
+          <div class="cost-row"><span class="label">Total recipe cost</span><span class="value" style="font-size:20px;color:var(--navy);">${fmt2$(totalCost)}</span></div>
+          <div class="cost-row"><span class="label">Menu price</span><span class="value">${rec.menuPrice>0?fmt2$(rec.menuPrice):'Not set'}</span></div>
+          <div class="cost-row"><span class="label">COGS</span><span class="value" style="color:${cogs===null?'inherit':parseFloat(cogs)<=(rec.targetCogs||25)?'var(--green)':parseFloat(cogs)<=(rec.targetCogs||25)*1.15?'#b07a00':'var(--red)'};">${cogs!==null?cogs+'%':'—'}</span></div>
+          <div class="cost-row"><span class="label">Gross profit</span><span class="value">${gp!==null?fmt2$(gp):'—'}</span></div>
+          <div class="cost-row"><span class="label">Suggested price (${rec.targetCogs||25}% COGS)</span><span class="value">${fmt2$(suggested)}</span></div>
+        </div>
+        <div style="margin-top:14px;background:var(--gray-lt);border-radius:8px;padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:8px;">Batch (${rec.batchSize||1} servings)</div>
+          <div class="cost-row"><span class="label">Batch cost</span><span class="value">${fmt2$(totalCost*(rec.batchSize||1))}</span></div>
+          <div class="cost-row"><span class="label">Batch gross profit</span><span class="value">${rec.menuPrice>0?fmt2$((rec.menuPrice-totalCost)*(rec.batchSize||1)):'—'}</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('rec-modal').classList.add('open');
+}
+
+function closeRecModal() {
+  document.getElementById('rec-modal').classList.remove('open');
+  _viewRecipeId = null;
+}
+
+function editRecipeFromModal() {
+  if (!_viewRecipeId) return;
+  const rec = __cache.recipes.find(r=>r.id===_viewRecipeId);
+  if (!rec) return;
+  closeRecModal();
+
+  // Open builder
+  const body = document.getElementById('new-recipe-body');
+  const arrow = document.getElementById('new-recipe-card').querySelector('.arrow');
+  body.classList.add('open');
+  arrow.style.transform = 'rotate(180deg)';
+  body.scrollIntoView({behavior:'smooth', block:'start'});
+
+  document.getElementById('rec-name').value = rec.name;
+  document.getElementById('rec-price').value = rec.menuPrice || '';
+  document.getElementById('rec-cogs').value = rec.targetCogs || 25;
+  document.getElementById('rec-batch').value = rec.batchSize || 1;
+  document.getElementById('rec-rows').innerHTML = '';
+  _recRowCount = 0;
+  document.getElementById('rec-rows').dataset.editId = rec.id;
+  rec.ingredients.forEach(i => addRecRow(i.name, i.qty, i.unit));
+  updateRecipeCost();
+}
+
+function deleteRecipeFromModal() {
+  if (!_viewRecipeId) return;
+  const rec = __cache.recipes.find(r=>r.id===_viewRecipeId);
+  if (!confirm(`Delete recipe "${rec?.name}"?`)) return;
+  __cache.recipes = __cache.recipes.filter(r=>r.id!==_viewRecipeId);
+  __db.collection('cocktail_recipes').doc(_viewRecipeId).delete().catch(e=>console.error(e));
+  closeRecModal();
+  renderRecipes();
+  showToast('Recipe deleted.');
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function unitOptions(selected='oz') {
+  const units = ['oz','ml','l','gal','lbm','ozm','g','kg','each'];
+  return units.map(u=>`<option value="${u}"${u===selected?' selected':''}>${u}</option>`).join('');
+}
+
+function ensureDatalist() {
+  let dl = document.getElementById('ing-datalist');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'ing-datalist';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = __cache.ingredients
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .map(i=>`<option value="${esc(i.name)}">`).join('');
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on overlay click
+document.getElementById('ing-modal').addEventListener('click', function(e) { if(e.target===this) closeIngModal(); });
+document.getElementById('rec-modal').addEventListener('click', function(e) { if(e.target===this) closeRecModal(); });
+
+// Live preview in modal
+document.addEventListener('DOMContentLoaded', () => {
+  ['ing-m-qty','ing-m-unit','ing-m-price'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateIngModalPreview);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+(async function() {
+  await initFirebase();
+  renderIngredients();
+  // Pre-populate one row in builders
+  addIhRow();
+  addRecRow();
+  ensureDatalist();
+})();
+</script>
+</body>
+</html>

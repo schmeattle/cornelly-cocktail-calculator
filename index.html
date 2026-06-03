@@ -122,6 +122,10 @@
     }
     th:first-child { border-radius: 6px 0 0 0; }
     th:last-child { border-radius: 0 6px 0 0; }
+    th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable:hover { background: #163f70; }
+    th.sort-asc::after  { content: ' ↑'; opacity: .9; }
+    th.sort-desc::after { content: ' ↓'; opacity: .9; }
     td { padding: 10px 12px; border-bottom: 1px solid var(--gray-lt); }
     tr:hover td { background: var(--gray-lt); }
     tr:last-child td { border-bottom: none; }
@@ -332,12 +336,12 @@
         <table>
           <thead>
             <tr>
-              <th>Ingredient</th>
-              <th>Type</th>
-              <th>Package</th>
-              <th>Price</th>
-              <th>$/oz</th>
-              <th>$/ml</th>
+              <th class="sortable" id="th-name"       onclick="setIngSort('name')">Ingredient</th>
+              <th class="sortable" id="th-type"       onclick="setIngSort('type')">Type</th>
+              <th class="sortable" id="th-qty"        onclick="setIngSort('qty')">Package</th>
+              <th class="sortable" id="th-price"      onclick="setIngSort('price')">Price</th>
+              <th class="sortable" id="th-peroz"      onclick="setIngSort('peroz')">$/oz</th>
+              <th class="sortable" id="th-perml"      onclick="setIngSort('perml')">$/ml</th>
               <th></th>
             </tr>
           </thead>
@@ -859,20 +863,58 @@ function toggleCollapsible(cardId) {
 // ═══════════════════════════════════════════════════
 // INGREDIENTS PAGE
 // ═══════════════════════════════════════════════════
+let _ingSort = { col: 'type', dir: 'asc' };
+
+function setIngSort(col) {
+  if (_ingSort.col === col) {
+    _ingSort.dir = _ingSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _ingSort.col = col;
+    _ingSort.dir = 'asc';
+  }
+  renderIngredients();
+}
+
 function renderIngredients() {
   const search = document.getElementById('ing-search')?.value?.toLowerCase() || '';
   const typeF = document.getElementById('ing-type-filter')?.value || '';
 
-  let ings = [...__cache.ingredients].sort((a,b) => {
-    if (a.type !== b.type) return a.type.localeCompare(b.type);
-    return a.name.localeCompare(b.name);
+  // Update sort header indicators
+  ['name','type','qty','price','peroz','perml'].forEach(c => {
+    const th = document.getElementById('th-' + c);
+    if (!th) return;
+    th.classList.remove('sort-asc','sort-desc');
+    if (_ingSort.col === c) th.classList.add('sort-' + _ingSort.dir);
   });
+
+  let ings = [...__cache.ingredients];
   if (search) ings = ings.filter(i => i.name.toLowerCase().includes(search) || i.type.toLowerCase().includes(search));
-  if (typeF) ings = ings.filter(i => i.type === typeF);
+  if (typeF)  ings = ings.filter(i => i.type === typeF);
+
+  ings.sort((a, b) => {
+    const dir = _ingSort.dir === 'asc' ? 1 : -1;
+    switch (_ingSort.col) {
+      case 'name':  return a.name.localeCompare(b.name) * dir;
+      case 'type':  return (a.type.localeCompare(b.type) || a.name.localeCompare(b.name)) * dir;
+      case 'qty':   return (a.qty - b.qty) * dir;
+      case 'price': return (a.price - b.price) * dir;
+      case 'peroz': {
+        const av = toMl(1, a.unit) !== null ? costPerRecipeUnit(a, 'oz') : 0;
+        const bv = toMl(1, b.unit) !== null ? costPerRecipeUnit(b, 'oz') : 0;
+        return (av - bv) * dir;
+      }
+      case 'perml': {
+        const av = toMl(1, a.unit) !== null ? costPerRecipeUnit(a, 'ml') : 0;
+        const bv = toMl(1, b.unit) !== null ? costPerRecipeUnit(b, 'ml') : 0;
+        return (av - bv) * dir;
+      }
+      default: return 0;
+    }
+  });
 
   document.getElementById('ing-count').textContent = ings.length;
 
-  // Populate type dropdown
+  // Populate type dropdown (use full list, not filtered)
   const sel = document.getElementById('ing-type-filter');
   const currentVal = sel.value;
   const types = [...new Set(__cache.ingredients.map(i=>i.type).filter(Boolean))].sort();

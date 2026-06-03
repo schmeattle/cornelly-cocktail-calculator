@@ -303,9 +303,9 @@
     </div>
   </div>
   <nav>
-    <button id="nav-ingredients" class="active" onclick="showPage('ingredients')">Ingredients</button>
+    <button id="nav-builder" class="active" onclick="showPage('builder')">Build Recipe</button>
+    <button id="nav-ingredients" onclick="showPage('ingredients')">Ingredients</button>
     <button id="nav-inhouse" onclick="showPage('inhouse')">In-House</button>
-    <button id="nav-builder" onclick="showPage('builder')">Build Recipe</button>
     <button id="nav-inventory" onclick="showPage('inventory')">Recipe Inventory</button>
   </nav>
 </header>
@@ -313,7 +313,7 @@
 <main>
 
   <!-- ── INGREDIENTS PAGE ── -->
-  <section id="page-ingredients" class="page active">
+  <section id="page-ingredients" class="page">
     <div class="page-title">Master Ingredients List</div>
     <div class="page-sub">All base ingredients. Prices update recipe costs automatically.</div>
 
@@ -415,7 +415,7 @@
   </section>
 
   <!-- ── BUILD RECIPE PAGE ── -->
-  <section id="page-builder" class="page">
+  <section id="page-builder" class="page active">
     <div class="page-title">Build Recipe</div>
     <div class="page-sub">Compose a new cocktail recipe. Costs calculate live. Add to inventory when ready.</div>
 

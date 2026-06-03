@@ -538,7 +538,7 @@
           <option value="l">l</option>
           <option value="oz">oz (wet)</option>
           <option value="gal">gal</option>
-          <option value="lbm">lbm (pounds)</option>
+          <option value="lbm">pounds</option>
           <option value="ozm">oz (dry)</option>
           <option value="g">g</option>
           <option value="kg">kg</option>
@@ -1480,7 +1480,7 @@ function deleteRecipe(id) {
 // ═══════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════
-const UNIT_LABELS = { oz: 'oz (wet)', ozm: 'oz (dry)', lbm: 'lbm', ml: 'ml', l: 'l', gal: 'gal', g: 'g', kg: 'kg', each: 'each' };
+const UNIT_LABELS = { oz: 'oz (wet)', ozm: 'oz (dry)', lbm: 'pounds', ml: 'ml', l: 'l', gal: 'gal', g: 'g', kg: 'kg', each: 'each' };
 function unitOptions(selected='oz') {
   const units = ['oz','ml','l','gal','lbm','ozm','g','kg','each'];
   return units.map(u=>`<option value="${u}"${u===selected?' selected':''}>${UNIT_LABELS[u]||u}</option>`).join('');

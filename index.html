@@ -273,14 +273,23 @@
       header { padding: 10px 14px; height: auto; flex-direction: column; gap: 8px; }
       .brand-text h1 { font-size: 13px; }
       nav { flex-wrap: wrap; justify-content: center; width: 100%; }
-      nav button { padding: 7px 10px; font-size: 11px; flex: 1 1 auto; text-align: center; }
+      nav button { padding: 7px 8px; font-size: 11px; flex: 1 1 auto; text-align: center; }
       main { padding: 16px 12px 60px; }
       .card { padding: 16px 14px; }
       .form-grid { grid-template-columns: 1fr; }
       .form-grid .full { grid-column: 1; }
-      .ingredient-row { grid-template-columns: 1fr 80px 80px 32px; }
-      .modal { padding: 24px 20px; }
+      .ingredient-row { grid-template-columns: 1fr 70px 80px 32px; }
+      .modal { padding: 24px 16px; }
       .recipe-grid { grid-template-columns: 1fr; }
+      /* Inventory rows: stack into 2-column layout on mobile */
+      .inv-summary-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+      }
+      .inv-summary-grid .inv-col-hide { display: none; }
+      /* Ingredients table: hide less important cols on mobile */
+      .ing-col-perml { display: none; }
+      .ing-col-qty   { display: none; }
     }
   </style>
 </head>
@@ -338,10 +347,10 @@
             <tr>
               <th class="sortable" id="th-name"       onclick="setIngSort('name')">Ingredient</th>
               <th class="sortable" id="th-type"       onclick="setIngSort('type')">Type</th>
-              <th class="sortable" id="th-qty"        onclick="setIngSort('qty')">Package</th>
+              <th class="sortable ing-col-qty" id="th-qty" onclick="setIngSort('qty')">Package</th>
               <th class="sortable" id="th-price"      onclick="setIngSort('price')">Price</th>
               <th class="sortable" id="th-peroz"      onclick="setIngSort('peroz')">$/oz</th>
-              <th class="sortable" id="th-perml"      onclick="setIngSort('perml')">$/ml</th>
+              <th class="sortable ing-col-perml" id="th-perml" onclick="setIngSort('perml')">$/ml</th>
               <th></th>
             </tr>
           </thead>
@@ -941,10 +950,10 @@ function renderIngredients() {
     return `<tr>
       <td><strong>${esc(ing.name)}</strong>${isInhouse?'<span class="inhouse-badge">in-house</span>':''}</td>
       <td><span class="type-badge">${esc(ing.type||'—')}</span></td>
-      <td style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}</td>
+      <td class="ing-col-qty" style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}</td>
       <td><strong>${fmt2$(ing.price)}</strong></td>
       <td class="price-per">${perOz !== null ? fmt2$(perOz)+'/oz' : perLbm !== null ? fmt2$(perLbm)+'/lb' : ing.unit==='each' ? fmt2$(ing.price/ing.qty)+'/ea' : '—'}</td>
-      <td class="price-per">${perMl !== null ? fmt2$(costPerRecipeUnit(ing,'ml'))+'/ml' : '—'}</td>
+      <td class="price-per ing-col-perml">${perMl !== null ? fmt2$(costPerRecipeUnit(ing,'ml'))+'/ml' : '—'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
     </tr>`;
   }).join('');
@@ -1390,7 +1399,7 @@ function renderInventory() {
 
     return `<div class="inv-row" id="inv-${esc(rec.id)}" style="border-bottom:1px solid var(--gray-lt);padding:0;">
       <!-- Summary row (always visible) -->
-      <div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:10px;align-items:center;padding:14px 4px;cursor:pointer;" onclick="toggleInvRow('${esc(rec.id)}')">
+      <div class="inv-summary-grid" style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 60px;gap:10px;align-items:center;padding:14px 4px;cursor:pointer;" onclick="toggleInvRow('${esc(rec.id)}')">
         <div>
           <div style="font-weight:700;font-size:14px;">${esc(rec.name)}</div>
           <div style="font-size:11px;color:var(--text-lt);margin-top:2px;">${rec.ingredients.length} ingredient${rec.ingredients.length !== 1 ? 's' : ''} · batch ${rec.batchSize || 1}</div>
@@ -1399,7 +1408,7 @@ function renderInventory() {
           <div style="font-size:11px;color:var(--text-lt);">Cost</div>
           <div style="font-weight:700;">${fmt2$(totalCost)}</div>
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:right;" class="inv-col-hide">
           <div style="font-size:11px;color:var(--text-lt);">Menu price</div>
           <div style="font-weight:700;">${rec.menuPrice > 0 ? fmt2$(rec.menuPrice) : '—'}</div>
         </div>
@@ -1407,12 +1416,12 @@ function renderInventory() {
           <div style="font-size:11px;color:var(--text-lt);">COGS</div>
           <div style="font-weight:700;color:${cogsColor};">${cogsPct}</div>
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:right;" class="inv-col-hide">
           <div style="font-size:11px;color:var(--text-lt);">Gross profit</div>
           <div style="font-weight:700;">${gp !== null ? fmt2$(gp) : '—'}</div>
         </div>
         <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">
-          <div class="cogs-bar" style="flex:1;max-width:60px;"><div class="cogs-bar-fill ${cogsBarClass}" style="width:${cogsBarFill}%"></div></div>
+          <div class="cogs-bar" style="flex:1;max-width:40px;"><div class="cogs-bar-fill ${cogsBarClass}" style="width:${cogsBarFill}%"></div></div>
           <span style="font-size:18px;color:var(--text-lt);line-height:1;margin-left:4px;" id="inv-arrow-${esc(rec.id)}">›</span>
         </div>
       </div>

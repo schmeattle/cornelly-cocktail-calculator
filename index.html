@@ -305,7 +305,8 @@
   <nav>
     <button id="nav-ingredients" class="active" onclick="showPage('ingredients')">Ingredients</button>
     <button id="nav-inhouse" onclick="showPage('inhouse')">In-House</button>
-    <button id="nav-recipes" onclick="showPage('recipes')">Recipes</button>
+    <button id="nav-builder" onclick="showPage('builder')">Build Recipe</button>
+    <button id="nav-inventory" onclick="showPage('inventory')">Recipe Inventory</button>
   </nav>
 </header>
 
@@ -413,72 +414,77 @@
     </div>
   </section>
 
-  <!-- ── RECIPES PAGE ── -->
-  <section id="page-recipes" class="page">
-    <div class="page-title">Cocktail Recipes</div>
-    <div class="page-sub">Build recipes using your ingredients. Cost updates live as you type.</div>
+  <!-- ── BUILD RECIPE PAGE ── -->
+  <section id="page-builder" class="page">
+    <div class="page-title">Build Recipe</div>
+    <div class="page-sub">Compose a new cocktail recipe. Costs calculate live. Add to inventory when ready.</div>
 
-    <!-- Recipe Builder -->
-    <div class="card collapsible-card" id="new-recipe-card">
-      <button class="collapsible-trigger" onclick="toggleCollapsible('new-recipe-card')">
-        <span>Build New Recipe</span>
-        <span class="arrow">▼</span>
-      </button>
-      <div class="collapsible-body" id="new-recipe-body">
-        <div style="margin-top:16px;">
-          <div class="form-grid" style="margin-bottom:16px;">
-            <div class="field">
-              <label>Recipe Name</label>
-              <input type="text" id="rec-name" placeholder="e.g. Negroni Rosso" />
-            </div>
-            <div class="field">
-              <label>Menu Price ($)</label>
-              <input type="number" id="rec-price" min="0" step="0.01" placeholder="15.00" oninput="updateRecipeCost()" />
-            </div>
-            <div class="field">
-              <label>Target COGS %</label>
-              <input type="number" id="rec-cogs" min="1" max="100" step="1" value="25" oninput="updateRecipeCost()" />
-            </div>
-            <div class="field">
-              <label>Batch Size (servings)</label>
-              <input type="number" id="rec-batch" min="1" step="1" placeholder="1" value="1" oninput="updateRecipeCost()" />
-            </div>
-          </div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:10px;">Ingredients</div>
-          <div id="rec-rows"></div>
-          <button class="btn btn-ghost btn-sm" onclick="addRecRow()" style="margin-top:6px;">+ Add Ingredient</button>
-          <div class="cost-panel" id="rec-cost-panel">
-            <h3>Cost Summary</h3>
-            <div id="rec-cost-rows"></div>
-            <div class="cost-row total">
-              <span class="label">Recipe Cost</span>
-              <span class="value" id="rec-total-cost">—</span>
-            </div>
-            <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-              <div class="cogs-indicator" id="rec-cogs-badge">—</div>
-              <div class="suggested-price" id="rec-suggested">—</div>
-            </div>
-            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--gray);">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:8px;">Batch View (<span id="rec-batch-lbl">1</span> servings)</div>
-              <div class="cost-row"><span class="label">Batch cost</span><span class="value" id="rec-batch-cost">—</span></div>
-              <div class="cost-row"><span class="label">Batch gross profit (at menu price)</span><span class="value" id="rec-batch-gp">—</span></div>
-            </div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="saveRecipe()">Save Recipe</button>
-            <button class="btn btn-outline" onclick="clearRecForm()">Clear</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Saved Recipes -->
     <div class="card">
       <div class="card-header">
-        <h2>Saved Recipes (<span id="rec-count">0</span>)</h2>
-        <input type="text" id="rec-search" placeholder="Search…" oninput="renderRecipes()" style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 11px;font-size:12px;outline:none;width:160px;" />
+        <h2 id="builder-heading">New Recipe</h2>
+        <button class="btn btn-ghost btn-sm" onclick="clearRecForm()">Clear</button>
       </div>
-      <div id="rec-grid" class="recipe-grid"></div>
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div class="field">
+          <label>Recipe Name</label>
+          <input type="text" id="rec-name" placeholder="e.g. Negroni Rosso" />
+        </div>
+        <div class="field">
+          <label>Menu Price ($)</label>
+          <input type="number" id="rec-price" min="0" step="0.01" placeholder="15.00" oninput="updateRecipeCost()" />
+        </div>
+        <div class="field">
+          <label>Target COGS %</label>
+          <input type="number" id="rec-cogs" min="1" max="100" step="1" value="25" oninput="updateRecipeCost()" />
+        </div>
+        <div class="field">
+          <label>Batch Size (servings)</label>
+          <input type="number" id="rec-batch" min="1" step="1" value="1" oninput="updateRecipeCost()" />
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:10px;">Ingredients</div>
+      <div id="rec-rows"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addRecRow()" style="margin-top:8px;">+ Add Ingredient</button>
+
+      <div class="cost-panel" style="margin-top:20px;">
+        <h3>Cost Summary</h3>
+        <div id="rec-cost-rows"></div>
+        <div class="cost-row total">
+          <span class="label">Recipe Cost</span>
+          <span class="value" id="rec-total-cost">—</span>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div class="cogs-indicator" id="rec-cogs-badge">—</div>
+          <div class="suggested-price" id="rec-suggested">—</div>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--gray);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:8px;">Batch View (<span id="rec-batch-lbl">1</span> servings)</div>
+          <div class="cost-row"><span class="label">Batch cost</span><span class="value" id="rec-batch-cost">—</span></div>
+          <div class="cost-row"><span class="label">Batch gross profit</span><span class="value" id="rec-batch-gp">—</span></div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:20px;">
+        <button class="btn btn-primary" id="add-to-inventory-btn" onclick="saveRecipe()">✓ Add to Inventory</button>
+        <button class="btn btn-outline" onclick="clearRecForm()">Clear</button>
+      </div>
+      <input type="hidden" id="rec-edit-id" value="" />
+    </div>
+  </section>
+
+  <!-- ── RECIPE INVENTORY PAGE ── -->
+  <section id="page-inventory" class="page">
+    <div class="page-title">Recipe Inventory</div>
+    <div class="page-sub">All saved cocktail recipes with live COGS. Expand any recipe to see details or edit.</div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Recipes (<span id="inv-count">0</span>)</h2>
+        <input type="text" id="inv-search" placeholder="Search…" oninput="renderInventory()"
+          style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 11px;font-size:12px;outline:none;width:160px;" />
+      </div>
+      <div id="inv-list"></div>
     </div>
   </section>
 
@@ -551,21 +557,7 @@
   </div>
 </div>
 
-<!-- Recipe Detail Modal -->
-<div class="modal-overlay" id="rec-modal">
-  <div class="modal" style="max-width:760px;">
-    <div class="modal-header">
-      <h2 id="rec-modal-title">Recipe</h2>
-      <button class="modal-close" onclick="closeRecModal()">×</button>
-    </div>
-    <div id="rec-modal-body"></div>
-    <div class="btn-row">
-      <button class="btn btn-outline" onclick="editRecipeFromModal()">✏ Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteRecipeFromModal()" style="margin-left:auto;">Delete Recipe</button>
-      <button class="btn btn-ghost btn-sm" onclick="closeRecModal()">Close</button>
-    </div>
-  </div>
-</div>
+<!-- (Recipe detail is now inline in inventory page) -->
 
 <div id="toast"></div>
 
@@ -840,7 +832,8 @@ function showPage(name) {
   document.getElementById('nav-' + name).classList.add('active');
   if (name === 'ingredients') renderIngredients();
   if (name === 'inhouse')     { renderInhouse(); populateIhTypeDropdown(); }
-  if (name === 'recipes')     { renderRecipes(); populateRecDropdowns(); }
+  if (name === 'builder')     { ensureDatalist(); updateRecipeCost(); }
+  if (name === 'inventory')   renderInventory();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1173,9 +1166,8 @@ function deleteInhouse(id) {
 // RECIPES PAGE
 // ═══════════════════════════════════════════════════
 let _recRowCount = 0;
-let _viewRecipeId = null;
 
-function populateRecDropdowns() { /* handled inline via datalist */ ensureDatalist(); }
+// (datalist handled by ensureDatalist called in showPage builder)
 
 function addRecRow(ingName='', qty='', unit='oz') {
   _recRowCount++;
@@ -1267,44 +1259,37 @@ function saveRecipe() {
   const menuPrice = parseFloat(document.getElementById('rec-price').value) || 0;
   const targetCogs = parseFloat(document.getElementById('rec-cogs').value) || 25;
   const batchSize = parseInt(document.getElementById('rec-batch').value) || 1;
-  if (!name) { showToast('Please enter a recipe name.','error'); return; }
+  if (!name) { showToast('Please enter a recipe name.', 'error'); return; }
 
   const ings = [];
   document.querySelectorAll('[id^="rec-row-"]').forEach(row => {
-    const idx = row.id.replace('rec-row-','');
+    const idx = row.id.replace('rec-row-', '');
     const ingName = document.getElementById('rec-ing-' + idx)?.value?.trim() || '';
     const qty = parseFloat(document.getElementById('rec-qty-' + idx)?.value) || 0;
     const unit = document.getElementById('rec-unit-' + idx)?.value || 'oz';
     if (ingName && qty > 0) ings.push({name: ingName, qty, unit});
   });
-  if (!ings.length) { showToast('Please add at least one ingredient.','error'); return; }
+  if (!ings.length) { showToast('Please add at least one ingredient.', 'error'); return; }
 
-  // Check if editing
-  const editId = document.getElementById('rec-rows').dataset.editId;
+  const editId = document.getElementById('rec-edit-id').value;
   if (editId) {
-    const idx = __cache.recipes.findIndex(r=>r.id===editId);
+    const idx = __cache.recipes.findIndex(r => r.id === editId);
     if (idx >= 0) {
       __cache.recipes[idx] = {...__cache.recipes[idx], name, menuPrice, targetCogs, batchSize, ingredients: ings};
-      __db.collection('cocktail_recipes').doc(editId).update({name, menuPrice, targetCogs, batchSize, ingredients: ings}).catch(e=>console.error(e));
-      showToast('Recipe updated!','success');
-      delete document.getElementById('rec-rows').dataset.editId;
+      __db.collection('cocktail_recipes').doc(editId).update({name, menuPrice, targetCogs, batchSize, ingredients: ings}).catch(e => console.error(e));
+      showToast('Recipe updated!', 'success');
     }
   } else {
-    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const rec = {id, name, menuPrice, targetCogs, batchSize, ingredients: ings};
     __cache.recipes.push(rec);
-    __db.collection('cocktail_recipes').doc(id).set(rec).catch(e=>console.error(e));
-    showToast('Recipe saved!','success');
+    __db.collection('cocktail_recipes').doc(id).set(rec).catch(e => console.error(e));
+    showToast(`"${name}" added to inventory!`, 'success');
   }
 
   clearRecForm();
-  renderRecipes();
-
-  // Close builder
-  const body = document.getElementById('new-recipe-body');
-  const arrow = document.getElementById('new-recipe-card').querySelector('.arrow');
-  body.classList.remove('open');
-  arrow.style.transform = '';
+  // Switch to inventory view
+  showPage('inventory');
 }
 
 function clearRecForm() {
@@ -1312,8 +1297,10 @@ function clearRecForm() {
   document.getElementById('rec-price').value = '';
   document.getElementById('rec-cogs').value = '25';
   document.getElementById('rec-batch').value = '1';
+  document.getElementById('rec-edit-id').value = '';
+  document.getElementById('builder-heading').textContent = 'New Recipe';
+  document.getElementById('add-to-inventory-btn').textContent = '✓ Add to Inventory';
   document.getElementById('rec-rows').innerHTML = '';
-  delete document.getElementById('rec-rows').dataset.editId;
   _recRowCount = 0;
   document.getElementById('rec-cost-rows').innerHTML = '';
   document.getElementById('rec-total-cost').textContent = '—';
@@ -1325,123 +1312,128 @@ function clearRecForm() {
   addRecRow();
 }
 
-function renderRecipes() {
-  const search = document.getElementById('rec-search')?.value?.toLowerCase() || '';
+// ── RECIPE INVENTORY ──────────────────────────────
+function renderInventory() {
+  const search = (document.getElementById('inv-search')?.value || '').toLowerCase();
   let recs = [...__cache.recipes];
   if (search) recs = recs.filter(r => r.name.toLowerCase().includes(search));
-  recs.sort((a,b) => a.name.localeCompare(b.name));
+  recs.sort((a, b) => a.name.localeCompare(b.name));
 
-  document.getElementById('rec-count').textContent = recs.length;
-  const grid = document.getElementById('rec-grid');
+  document.getElementById('inv-count').textContent = recs.length;
+  const list = document.getElementById('inv-list');
 
   if (!recs.length) {
-    grid.innerHTML = '<div style="text-align:center;color:var(--text-lt);padding:28px;font-style:italic;grid-column:1/-1;">No recipes yet. Build your first recipe above.</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text-lt);padding:32px;font-style:italic;">No recipes in inventory yet. Use Build Recipe to create your first.</div>';
     return;
   }
 
-  grid.innerHTML = recs.map(rec => {
-    const totalCost = rec.ingredients.reduce((s,i) => s + ingredientCost(i.name, i.qty, i.unit), 0);
+  list.innerHTML = recs.map(rec => {
+    const totalCost = rec.ingredients.reduce((s, i) => s + ingredientCost(i.name, i.qty, i.unit), 0);
     const cogs = rec.menuPrice > 0 ? totalCost / rec.menuPrice : null;
-    const cogsPct = cogs !== null ? (cogs*100).toFixed(1) : '—';
-    const cogsClass = cogs === null ? '' : cogs <= rec.targetCogs/100 ? 'cogs-ok' : cogs <= rec.targetCogs/100 * 1.15 ? 'cogs-warn' : 'cogs-over';
-    const cogsBarWidth = cogs !== null ? Math.min(100, cogs*100 / (rec.targetCogs||25) * 100).toFixed(1) : 0;
-    return `<div class="recipe-card" onclick="viewRecipe('${esc(rec.id)}')">
-      <div class="recipe-card-header">
-        <h3>${esc(rec.name)}</h3>
-        <p>${rec.ingredients.length} ingredient${rec.ingredients.length!==1?'s':''}</p>
+    const cogsPct = cogs !== null ? (cogs * 100).toFixed(1) + '%' : '—';
+    const cogsColor = cogs === null ? 'var(--text-lt)' : cogs <= (rec.targetCogs || 25) / 100 ? 'var(--green)' : cogs <= (rec.targetCogs || 25) / 100 * 1.15 ? '#b07a00' : 'var(--red)';
+    const gp = rec.menuPrice > 0 ? rec.menuPrice - totalCost : null;
+    const suggested = totalCost / ((rec.targetCogs || 25) / 100);
+    const cogsBarFill = cogs !== null ? Math.min(100, (cogs / ((rec.targetCogs || 25) / 100)) * 100).toFixed(1) : 0;
+    const cogsBarClass = cogs === null ? '' : cogs <= (rec.targetCogs || 25) / 100 ? 'cogs-ok' : cogs <= (rec.targetCogs || 25) / 100 * 1.15 ? 'cogs-warn' : 'cogs-over';
+
+    const ingRows = rec.ingredients.map(i => {
+      const cost = ingredientCost(i.name, i.qty, i.unit);
+      const found = findIngredient(i.name);
+      return `<div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-lt);font-size:12px;align-items:center;">
+        <span style="font-weight:500;">${esc(i.name)}${!found ? ' <span style="color:var(--red);font-size:10px;">(not found)</span>' : ''}</span>
+        <span style="color:var(--text-lt);">${i.qty} ${esc(i.unit)}</span>
+        <span style="font-weight:600;">${fmt$(cost)}</span>
+        <span style="color:var(--text-lt);font-size:11px;">${found ? fmt2$(costPerRecipeUnit(found, i.unit)) + '/' + i.unit : '—'}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="inv-row" id="inv-${esc(rec.id)}" style="border-bottom:1px solid var(--gray-lt);padding:0;">
+      <!-- Summary row (always visible) -->
+      <div style="display:grid;grid-template-columns:1fr 90px 90px 90px 90px 110px;gap:10px;align-items:center;padding:14px 4px;cursor:pointer;" onclick="toggleInvRow('${esc(rec.id)}')">
+        <div>
+          <div style="font-weight:700;font-size:14px;">${esc(rec.name)}</div>
+          <div style="font-size:11px;color:var(--text-lt);margin-top:2px;">${rec.ingredients.length} ingredient${rec.ingredients.length !== 1 ? 's' : ''} · batch ${rec.batchSize || 1}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-lt);">Cost</div>
+          <div style="font-weight:700;">${fmt2$(totalCost)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-lt);">Menu price</div>
+          <div style="font-weight:700;">${rec.menuPrice > 0 ? fmt2$(rec.menuPrice) : '—'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-lt);">COGS</div>
+          <div style="font-weight:700;color:${cogsColor};">${cogsPct}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-lt);">Gross profit</div>
+          <div style="font-weight:700;">${gp !== null ? fmt2$(gp) : '—'}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">
+          <div class="cogs-bar" style="flex:1;max-width:60px;"><div class="cogs-bar-fill ${cogsBarClass}" style="width:${cogsBarFill}%"></div></div>
+          <span style="font-size:18px;color:var(--text-lt);line-height:1;margin-left:4px;" id="inv-arrow-${esc(rec.id)}">›</span>
+        </div>
       </div>
-      <div class="recipe-card-body">
-        <div class="recipe-stat"><span>Recipe cost</span><span>${fmt2$(totalCost)}</span></div>
-        <div class="recipe-stat"><span>Menu price</span><span>${rec.menuPrice>0?fmt2$(rec.menuPrice):'—'}</span></div>
-        <div class="recipe-stat"><span>COGS</span><span style="color:${cogs===null?'inherit':cogs<=(rec.targetCogs||25)/100?'var(--green)':cogs<=(rec.targetCogs||25)/100*1.15?'#b07a00':'var(--red)'}">${cogsPct}%</span></div>
-        <div class="recipe-stat"><span>Gross profit</span><span>${rec.menuPrice>0?fmt2$(rec.menuPrice-totalCost):'—'}</span></div>
-        <div class="cogs-bar"><div class="cogs-bar-fill ${cogsClass}" style="width:${cogsBarWidth}%"></div></div>
+      <!-- Expandable detail -->
+      <div id="inv-detail-${esc(rec.id)}" style="display:none;padding:0 4px 16px;">
+        <div style="background:var(--gray-lt);border-radius:8px;padding:14px 16px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:8px;padding-bottom:6px;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-lt);">
+            <span>Ingredient</span><span>Qty / Unit</span><span>Line cost</span><span>Unit rate</span>
+          </div>
+          ${ingRows}
+          <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:8px;border-top:1px solid var(--gray);font-size:13px;font-weight:700;">
+            Total: ${fmt2$(totalCost)}
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;font-size:12px;color:var(--text-lt);">
+          <span>Suggested price (${rec.targetCogs || 25}% COGS): <strong style="color:var(--navy);">${fmt2$(suggested)}</strong></span>
+          <span>·</span>
+          <span>Batch cost (×${rec.batchSize || 1}): <strong>${fmt2$(totalCost * (rec.batchSize || 1))}</strong></span>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-outline btn-sm" onclick="editRecipe('${esc(rec.id)}')">✏ Edit Recipe</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRecipe('${esc(rec.id)}')">Delete</button>
+        </div>
       </div>
     </div>`;
   }).join('');
 }
 
-// Recipe Detail Modal
-function viewRecipe(id) {
-  const rec = __cache.recipes.find(r=>r.id===id);
-  if (!rec) return;
-  _viewRecipeId = id;
-
-  const totalCost = rec.ingredients.reduce((s,i) => s + ingredientCost(i.name, i.qty, i.unit), 0);
-  const cogs = rec.menuPrice > 0 ? (totalCost/rec.menuPrice*100).toFixed(1) : null;
-  const gp = rec.menuPrice > 0 ? rec.menuPrice - totalCost : null;
-  const suggested = totalCost / ((rec.targetCogs||25)/100);
-
-  document.getElementById('rec-modal-title').textContent = rec.name;
-  document.getElementById('rec-modal-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
-      <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:12px;">Ingredients</div>
-        ${rec.ingredients.map(i => {
-          const cost = ingredientCost(i.name, i.qty, i.unit);
-          return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-lt);font-size:13px;">
-            <span><strong>${esc(i.name)}</strong> <span style="color:var(--text-lt);">${i.qty} ${esc(i.unit)}</span></span>
-            <span style="font-weight:600;">${fmt$(cost)}</span>
-          </div>`;
-        }).join('')}
-      </div>
-      <div>
-        <div class="cost-panel">
-          <h3>Cost Breakdown</h3>
-          <div class="cost-row"><span class="label">Total recipe cost</span><span class="value" style="font-size:20px;color:var(--navy);">${fmt2$(totalCost)}</span></div>
-          <div class="cost-row"><span class="label">Menu price</span><span class="value">${rec.menuPrice>0?fmt2$(rec.menuPrice):'Not set'}</span></div>
-          <div class="cost-row"><span class="label">COGS</span><span class="value" style="color:${cogs===null?'inherit':parseFloat(cogs)<=(rec.targetCogs||25)?'var(--green)':parseFloat(cogs)<=(rec.targetCogs||25)*1.15?'#b07a00':'var(--red)'};">${cogs!==null?cogs+'%':'—'}</span></div>
-          <div class="cost-row"><span class="label">Gross profit</span><span class="value">${gp!==null?fmt2$(gp):'—'}</span></div>
-          <div class="cost-row"><span class="label">Suggested price (${rec.targetCogs||25}% COGS)</span><span class="value">${fmt2$(suggested)}</span></div>
-        </div>
-        <div style="margin-top:14px;background:var(--gray-lt);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-lt);margin-bottom:8px;">Batch (${rec.batchSize||1} servings)</div>
-          <div class="cost-row"><span class="label">Batch cost</span><span class="value">${fmt2$(totalCost*(rec.batchSize||1))}</span></div>
-          <div class="cost-row"><span class="label">Batch gross profit</span><span class="value">${rec.menuPrice>0?fmt2$((rec.menuPrice-totalCost)*(rec.batchSize||1)):'—'}</span></div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('rec-modal').classList.add('open');
+function toggleInvRow(id) {
+  const detail = document.getElementById('inv-detail-' + id);
+  const arrow  = document.getElementById('inv-arrow-' + id);
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  arrow.textContent = open ? '›' : '⌄';
+  arrow.style.transform = open ? '' : 'rotate(0deg)';
 }
 
-function closeRecModal() {
-  document.getElementById('rec-modal').classList.remove('open');
-  _viewRecipeId = null;
-}
-
-function editRecipeFromModal() {
-  if (!_viewRecipeId) return;
-  const rec = __cache.recipes.find(r=>r.id===_viewRecipeId);
+function editRecipe(id) {
+  const rec = __cache.recipes.find(r => r.id === id);
   if (!rec) return;
-  closeRecModal();
-
-  // Open builder
-  const body = document.getElementById('new-recipe-body');
-  const arrow = document.getElementById('new-recipe-card').querySelector('.arrow');
-  body.classList.add('open');
-  arrow.style.transform = 'rotate(180deg)';
-  body.scrollIntoView({behavior:'smooth', block:'start'});
-
+  // Load into builder
   document.getElementById('rec-name').value = rec.name;
   document.getElementById('rec-price').value = rec.menuPrice || '';
   document.getElementById('rec-cogs').value = rec.targetCogs || 25;
   document.getElementById('rec-batch').value = rec.batchSize || 1;
+  document.getElementById('rec-edit-id').value = rec.id;
+  document.getElementById('builder-heading').textContent = 'Editing: ' + rec.name;
+  document.getElementById('add-to-inventory-btn').textContent = '✓ Save Changes';
   document.getElementById('rec-rows').innerHTML = '';
   _recRowCount = 0;
-  document.getElementById('rec-rows').dataset.editId = rec.id;
   rec.ingredients.forEach(i => addRecRow(i.name, i.qty, i.unit));
   updateRecipeCost();
+  showPage('builder');
 }
 
-function deleteRecipeFromModal() {
-  if (!_viewRecipeId) return;
-  const rec = __cache.recipes.find(r=>r.id===_viewRecipeId);
-  if (!confirm(`Delete recipe "${rec?.name}"?`)) return;
-  __cache.recipes = __cache.recipes.filter(r=>r.id!==_viewRecipeId);
-  __db.collection('cocktail_recipes').doc(_viewRecipeId).delete().catch(e=>console.error(e));
-  closeRecModal();
-  renderRecipes();
+function deleteRecipe(id) {
+  const rec = __cache.recipes.find(r => r.id === id);
+  if (!confirm(`Delete recipe "${rec?.name}"? This cannot be undone.`)) return;
+  __cache.recipes = __cache.recipes.filter(r => r.id !== id);
+  __db.collection('cocktail_recipes').doc(id).delete().catch(e => console.error(e));
+  renderInventory();
   showToast('Recipe deleted.');
 }
 
@@ -1472,7 +1464,6 @@ function esc(s) {
 
 // Close modals on overlay click
 document.getElementById('ing-modal').addEventListener('click', function(e) { if(e.target===this) closeIngModal(); });
-document.getElementById('rec-modal').addEventListener('click', function(e) { if(e.target===this) closeRecModal(); });
 
 // Live preview in modal
 document.addEventListener('DOMContentLoaded', () => {

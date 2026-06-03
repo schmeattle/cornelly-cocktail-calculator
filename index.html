@@ -804,10 +804,7 @@ function fmt2$(v) { return '$' + (v||0).toFixed(2); }
 // GATE
 // ═══════════════════════════════════════════════════
 (function() {
-  if (sessionStorage.getItem('cocktailGate') === '1') {
-    document.getElementById('gate').style.display = 'none';
-  }
-  document.getElementById('gate-input').addEventListener('keydown', e => { if(e.key==='Enter') checkGate(); });
+  document.getElementById('gate').style.display = 'none';
 })();
 
 async function checkGate() {

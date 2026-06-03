@@ -1180,7 +1180,7 @@ function addRecRow(ingName='', qty='', unit='oz') {
     </div>
     <div class="field">
       <label style="font-size:10px;">Qty</label>
-      <input type="number" id="rec-qty-${idx}" value="${qty}" min="0" step="any" placeholder="0" oninput="updateRecipeCost()" style="width:100%;"/>
+      <input type="number" id="rec-qty-${idx}" value="${qty}" min="0" step="0.25" placeholder="0" oninput="updateRecipeCost()" style="width:100%;"/>
     </div>
     <div class="field">
       <label style="font-size:10px;">Unit</label>

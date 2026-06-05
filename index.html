@@ -543,26 +543,21 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <div style="font-weight:600;font-size:15px;" id="invoice-result-title">Extracted Ingredients</div>
+            <div style="font-weight:600;font-size:15px;" id="invoice-result-title">Import Complete</div>
             <div style="font-size:12px;color:var(--text-lt);" id="invoice-result-sub"></div>
           </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline btn-sm" id="invoice-reset-btn">Upload Another</button>
-            <button class="btn btn-primary btn-sm" id="invoice-add-btn">✓ Add Selected to Ingredients</button>
-          </div>
+          <button class="btn btn-outline btn-sm" id="invoice-reset-btn">Upload Another</button>
         </div>
         <div class="table-wrap">
           <table id="invoice-table" style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
               <tr>
-                <th style="width:32px;"><input type="checkbox" id="invoice-check-all" checked /></th>
                 <th>Name</th>
                 <th>Type</th>
                 <th>Distributor</th>
-                <th>Pkg Qty</th>
-                <th>Unit</th>
-                <th>Price ($)</th>
-                <th>Notes</th>
+                <th>Package</th>
+                <th>Price</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody id="invoice-tbody"></tbody>
@@ -1904,54 +1899,22 @@ If you cannot find reliable info for a field, use empty string "".`;
 let _invoiceDate = null;
 
 function renderInvoiceResults(parsed, filename, invoiceDate) {
-  _invoiceDate  = invoiceDate || null;
-  _wineDetails  = parsed._wineDetails || {};
-  const vendor  = parsed.vendor || "";
+  _invoiceDate = invoiceDate || null;
+  _wineDetails = parsed._wineDetails || {};
+  const vendor = parsed.vendor || "";
   const items  = parsed.items  || [];
-  document.getElementById("invoice-result-title").textContent = `${items.length} item${items.length === 1 ? "" : "s"} found`;
-  const datePart = invoiceDate ? ` · Invoice date: ${invoiceDate}` : "";
-  document.getElementById("invoice-result-sub").textContent   = `${vendor ? vendor + " · " : ""}${filename}${datePart}`;
+  const datePart = invoiceDate ? ` · ${invoiceDate}` : "";
+  document.getElementById("invoice-result-sub").textContent = `${vendor ? vendor + " · " : ""}${filename}${datePart}`;
 
-  const ING_TYPES = ["amaro / liqueur","bitters","brandy","gin","juice","syrup","tequila","vermouth / wine","vodka","whiskey","beer","wine","na beverage","other"];
-  const UNITS     = ["ml","l","oz","gal","each","case"];
-  const tbody     = document.getElementById("invoice-tbody");
-
-  tbody.innerHTML = items.map((item, i) => {
-    const existing  = __cache.ingredients.find(x => x.name.toLowerCase() === item.name.toLowerCase());
-    const willUpdate = !!existing;
-    const typeOpts  = ING_TYPES.map(t => `<option value="${t}"${t === item.type ? " selected" : ""}>${t}</option>`).join("");
-    const unitOpts  = UNITS.map(u => `<option value="${u}"${u === item.purchaseUnit ? " selected" : ""}>${u}</option>`).join("");
-    return `<tr class="inv-row${willUpdate ? " will-update" : ""}" data-idx="${i}">
-      <td style="text-align:center;"><input type="checkbox" class="inv-check" checked /></td>
-      <td><input type="text"   class="inv-name"   value="${esc(item.name)}" style="min-width:140px;" /></td>
-      <td><select class="inv-type" style="min-width:110px;">${typeOpts}</select></td>
-      <td><input type="text"   class="inv-vendor" value="${esc(vendor)}" style="min-width:100px;" /></td>
-      <td><input type="number" class="inv-qty"    value="${item.purchaseQty  || ""}" step="any" min="0" style="width:70px;" /></td>
-      <td><select class="inv-unit">${unitOpts}</select></td>
-      <td><input type="number" class="inv-cost"   value="${item.purchaseCost || ""}" step="0.01" min="0" style="width:80px;" /></td>
-      <td><input type="text"   class="inv-notes"  value="${esc(item.notes || "")}" style="color:var(--text-lt);font-size:12px;min-width:120px;" /></td>
-    </tr>`;
-  }).join("");
-
-  document.getElementById("invoice-check-all").checked = true;
-  document.getElementById("invoice-check-all").onchange = e => {
-    tbody.querySelectorAll(".inv-check").forEach(c => c.checked = e.target.checked);
-  };
-  invShow("invoice-results");
-}
-
-document.getElementById("invoice-add-btn").addEventListener("click", () => {
-  const rows = document.querySelectorAll("#invoice-tbody .inv-row");
-  let added = 0, updated = 0;
-  rows.forEach(row => {
-    if (!row.querySelector(".inv-check").checked) return;
-    const name   = row.querySelector(".inv-name").value.trim();
+  // ── Auto-import all items immediately ──
+  let added = 0, updated = 0, winesAdded = 0;
+  items.forEach(item => {
+    const name  = (item.name || "").trim();
     if (!name) return;
-    const qty    = parseFloat(row.querySelector(".inv-qty").value)    || 0;
-    const price  = parseFloat(row.querySelector(".inv-cost").value)   || 0;
-    const unit   = row.querySelector(".inv-unit").value;
-    const type   = row.querySelector(".inv-type").value;
-    const vendor = row.querySelector(".inv-vendor").value.trim();
+    const qty    = parseFloat(item.purchaseQty)   || 0;
+    const price  = parseFloat(item.purchaseCost)  || 0;
+    const unit   = item.purchaseUnit || "each";
+    const type   = item.type         || "other";
     const existIdx = __cache.ingredients.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
     if (existIdx >= 0) {
       const old = __cache.ingredients[existIdx];
@@ -1959,52 +1922,59 @@ document.getElementById("invoice-add-btn").addEventListener("click", () => {
                            Math.abs((old.qty   || 0) - qty)   > 0.001 ||
                            old.unit !== unit;
       const history = old.priceHistory || [];
-      if (priceChanged) {
-        history.unshift({ price: old.price, qty: old.qty, unit: old.unit, date: _invoiceDate || new Date().toISOString().slice(0,10) });
-      }
+      if (priceChanged) history.unshift({ price: old.price, qty: old.qty, unit: old.unit, date: _invoiceDate || new Date().toISOString().slice(0,10) });
       __cache.ingredients[existIdx] = { ...old, name, type, qty, unit, price, vendor, priceHistory: history };
       updated++;
     } else {
       __cache.ingredients.push({ id: 'i_' + Date.now() + Math.random().toString(36).slice(2), name, type, qty, unit, price, vendor, priceHistory: [] });
       added++;
     }
-    // Auto-add to wine list if type is wine (not vermouth)
     if (type === 'wine') {
       const bottleCount = (unit === 'each' || unit === 'case') ? qty : 1;
-      const wholesale = bottleCount > 0 ? parseFloat((price / bottleCount).toFixed(2)) : price;
-      // Use web-searched details if available, fall back to parsing the name
-      const details = _wineDetails[name] || {};
+      const wholesale   = bottleCount > 0 ? parseFloat((price / bottleCount).toFixed(2)) : price;
+      const details     = _wineDetails[name] || {};
       const vintageMatch = name.match(/\b(19|20)\d{2}\b/);
-      const vintage  = details.varietal ? (vintageMatch ? vintageMatch[0] : '') : (vintageMatch ? vintageMatch[0] : '');
+      const vintage     = vintageMatch ? vintageMatch[0] : (details.vintage || '');
       const nameSansVintage = name.replace(/\b(19|20)\d{2}\b/, '').trim().replace(/\s+/g, ' ');
       const alreadyInWineList = __cache.wines.some(w => {
-        const fullName = (w.producer + ' ' + (w.bottling !== 'N/A' ? w.bottling : '')).trim().toLowerCase();
-        return fullName === nameSansVintage.toLowerCase() || w.producer?.toLowerCase() === nameSansVintage.toLowerCase();
+        const full = (w.producer + ' ' + (w.bottling !== 'N/A' ? w.bottling : '')).trim().toLowerCase();
+        return full === nameSansVintage.toLowerCase() || w.producer?.toLowerCase() === nameSansVintage.toLowerCase();
       });
       if (!alreadyInWineList) {
         const wineId = 'w_' + Date.now() + Math.random().toString(36).slice(2);
-        const wine = {
-          id:       wineId,
-          varietal: details.varietal  || '',
-          style:    details.style     || '',
-          producer: details.producer  || nameSansVintage,
-          bottling: details.bottling  || 'N/A',
-          region:   details.region    || '',
-          vintage:  details.vintage   || vintage,
-          wholesale,
-          menuPrice: null,
-        };
+        const wine = { id: wineId, varietal: details.varietal || '', style: details.style || '', producer: details.producer || nameSansVintage, bottling: details.bottling || 'N/A', region: details.region || '', vintage: details.vintage || vintage, wholesale, menuPrice: null };
         __cache.wines.push(wine);
         __db.collection('wine_list').doc(wineId).set(wine).catch(e => console.error(e));
+        winesAdded++;
       }
     }
   });
   saveIngredients();
   renderIngredients();
-  showToast(`Added ${added} new · updated ${updated} existing ingredients`);
-  invReset();
-  showPage('ingredients');
-});
+
+  const summary = `${added} added · ${updated} updated${winesAdded ? ` · ${winesAdded} added to wine list` : ''}`;
+  document.getElementById("invoice-result-title").textContent = `Imported ${items.length} item${items.length === 1 ? '' : 's'} — ${summary}`;
+
+  // ── Read-only summary table ──
+  const STATUS_STYLE = { added: 'color:var(--green);font-weight:600;', updated: 'color:var(--navy2);font-weight:600;', wine: 'color:var(--gold);font-size:11px;' };
+  document.getElementById("invoice-tbody").innerHTML = items.map(item => {
+    const name  = (item.name || "").trim();
+    const wasExisting = updated > 0 && __cache.ingredients.some(x => x.name.toLowerCase() === name.toLowerCase());
+    const isWine = item.type === 'wine';
+    const statusLabel = isWine ? '<span style="' + STATUS_STYLE.wine + '">+ wine list</span>' : '';
+    const rowStyle = wasExisting ? 'background:#f0f4ff;' : '';
+    return `<tr style="${rowStyle}">
+      <td><strong>${esc(name)}</strong></td>
+      <td><span class="type-badge">${esc(item.type || '')}</span></td>
+      <td style="color:var(--text-lt);">${esc(vendor)}</td>
+      <td style="color:var(--text-lt);">${item.purchaseQty || ''} ${esc(item.purchaseUnit || '')}</td>
+      <td><strong>${item.purchaseCost ? '$' + parseFloat(item.purchaseCost).toFixed(2) : '—'}</strong></td>
+      <td>${statusLabel}</td>
+    </tr>`;
+  }).join('');
+
+  invShow("invoice-results");
+}
 
 function deduplicateIngredients() {
   const groups = {};

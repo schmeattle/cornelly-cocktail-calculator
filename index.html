@@ -2346,6 +2346,7 @@ function wSortVal(w, col) {
   const sugg = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : 0;
   const menu = parseFloat(w.menuPrice) || 0;
   switch(col) {
+    case 'style':     return {'Sparkling':0,'White':1,'Orange':2,'Rosé':3,'Red':4,'Dessert / Fortified':5}[w.style] ?? 6;
     case 'wholesale': return parseFloat(w.wholesale) || 0;
     case 'sugg':      return sugg;
     case 'menu':      return menu;

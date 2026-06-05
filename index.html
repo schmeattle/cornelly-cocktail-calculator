@@ -604,9 +604,10 @@
               <th class="sortable" id="wth-vintage"  onclick="setWineSort('vintage')">Vintage</th>
               <th class="sortable" id="wth-wholesale" onclick="setWineSort('wholesale')" style="text-align:right;">Wholesale</th>
               <th class="sortable" id="wth-sugg"     onclick="setWineSort('sugg')"     style="text-align:right;">Sugg. Bottle</th>
-              <th class="sortable" id="wth-menu"     onclick="setWineSort('menu')"     style="text-align:right;">Menu Price</th>
-              <th class="sortable" id="wth-cogs"     onclick="setWineSort('cogs')"     style="text-align:right;">COGS %</th>
-              <th class="sortable" id="wth-glass"    onclick="setWineSort('glass')"    style="text-align:right;">6 oz Glass</th>
+              <th class="sortable" id="wth-menu"      onclick="setWineSort('menu')"      style="text-align:right;">Bottle Menu $</th>
+              <th class="sortable" id="wth-cogs"      onclick="setWineSort('cogs')"      style="text-align:right;">COGS %</th>
+              <th class="sortable" id="wth-glass"     onclick="setWineSort('glass')"     style="text-align:right;">Sugg. Glass</th>
+              <th class="sortable" id="wth-glassMenu" onclick="setWineSort('glassMenu')" style="text-align:right;">Glass Menu $</th>
               <th></th>
             </tr>
           </thead>
@@ -737,8 +738,12 @@
         <div id="wm-sugg-bottle" style="padding:9px 0;font-size:14px;font-weight:700;color:var(--navy);">—</div>
       </div>
       <div class="field">
-        <label>Real Menu Price ($) <span style="font-weight:400;color:var(--text-lt);">optional</span></label>
+        <label>Bottle Menu Price ($) <span style="font-weight:400;color:var(--text-lt);">optional</span></label>
         <input type="number" id="wm-menu-price" min="0" step="0.01" placeholder="0.00" oninput="wineCalcPreview()" />
+      </div>
+      <div class="field">
+        <label>Glass Menu Price ($) <span style="font-weight:400;color:var(--text-lt);">optional</span></label>
+        <input type="number" id="wm-menu-price-glass" min="0" step="0.01" placeholder="0.00" />
       </div>
       <div class="field">
         <label>COGS % vs Suggested</label>
@@ -2146,9 +2151,9 @@ function wineMarkup(wholesale) {
 function wineSuggBottle(wholesale) {
   return Math.round(wholesale * wineMarkup(wholesale) * 100) / 100;
 }
-function wineSuggGlass(suggBottle) {
-  // 750ml ≈ 4.2 six-oz pours; divide by 4 then round up to nearest $0.50
-  const raw = suggBottle / 4;
+function wineSuggGlass(wholesale) {
+  // (wholesale / oz in bottle) × 6oz pour × 4x markup, rounded up to nearest $0.50
+  const raw = (wholesale / 25.36) * 6 * 4;
   return Math.ceil(raw * 2) / 2;
 }
 function wineCogsPct(wholesale, menuPrice) {
@@ -2160,7 +2165,7 @@ function wineCalcPreview() {
   const w = parseFloat(document.getElementById('wm-wholesale').value) || 0;
   const m = parseFloat(document.getElementById('wm-menu-price').value) || 0;
   const sugg = w > 0 ? wineSuggBottle(w) : null;
-  const glass = sugg ? wineSuggGlass(sugg) : null;
+  const glass = w > 0 ? wineSuggGlass(w)  : null;
   document.getElementById('wm-sugg-bottle').textContent = sugg ? '$' + sugg.toFixed(2) : '—';
   document.getElementById('wm-sugg-glass').textContent  = glass ? '$' + glass.toFixed(2) : '—';
   const cogsDiffEl = document.getElementById('wm-cogs-diff');
@@ -2185,7 +2190,7 @@ function setWineSort(col) {
   renderWine();
 }
 
-const WINE_SORT_COLS = ['varietal','style','producer','bottling','region','vintage','wholesale','sugg','menu','cogs','glass'];
+const WINE_SORT_COLS = ['varietal','style','producer','bottling','region','vintage','wholesale','sugg','menu','cogs','glass','glassMenu'];
 function wSortVal(w, col) {
   const sugg = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : 0;
   const menu = parseFloat(w.menuPrice) || 0;
@@ -2194,7 +2199,8 @@ function wSortVal(w, col) {
     case 'sugg':      return sugg;
     case 'menu':      return menu;
     case 'cogs':      return (sugg && menu) ? w.wholesale / menu : 0;
-    case 'glass':     return sugg ? wineSuggGlass(sugg) : 0;
+    case 'glass':     return w.wholesale > 0 ? wineSuggGlass(w.wholesale) : 0;
+    case 'glassMenu': return parseFloat(w.menuPriceGlass) || 0;
     default:          return String(w[col] || '').toLowerCase();
   }
 }
@@ -2234,19 +2240,26 @@ function renderWine() {
     'Sparkling':'#283593','Dessert / Fortified':'#6a1b9a'
   };
   tbody.innerHTML = wines.map(w => {
-    const sugg  = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : null;
-    const glass = sugg ? wineSuggGlass(sugg) : null;
-    const menu  = parseFloat(w.menuPrice) || null;
+    const sugg      = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : null;
+    const glass     = w.wholesale > 0 ? wineSuggGlass(w.wholesale) : null;
+    const menuB     = parseFloat(w.menuPrice)      || null;
+    const menuG     = parseFloat(w.menuPriceGlass) || null;
     let cogsCell = '—';
-    if (sugg && menu) {
-      const realCogs = w.wholesale / menu;
+    if (sugg && menuB) {
+      const realCogs = w.wholesale / menuB;
       const suggCogs = w.wholesale / sugg;
       const diff = realCogs - suggCogs;
       const color = diff > 0.02 ? 'var(--red)' : diff < -0.02 ? 'var(--green)' : 'var(--text)';
       cogsCell = `<span style="color:${color};font-weight:600;">${(realCogs*100).toFixed(1)}%</span>`;
     }
-    const badgeBg  = STYLE_BADGE[w.style]  || '#eee';
+    const badgeBg  = STYLE_BADGE[w.style] || '#eee';
     const badgeClr = STYLE_COLOR[w.style] || '#333';
+    const inlineInput = (field, val, placeholder) =>
+      `<input type="number" min="0" step="0.01" placeholder="${placeholder}"
+        value="${val != null ? val : ''}"
+        style="width:72px;text-align:right;border:1px solid var(--gray);border-radius:4px;padding:3px 5px;font-size:12px;font-family:inherit;background:#fff;"
+        onchange="saveWineMenuPrice('${w.id}','${field}',this.value)"
+        onclick="event.stopPropagation()" />`;
     return `<tr>
       <td>${esc(w.varietal||'')}</td>
       <td><span style="background:${badgeBg};color:${badgeClr};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${esc(w.style||'')}</span></td>
@@ -2256,12 +2269,23 @@ function renderWine() {
       <td>${esc(w.vintage||'')}</td>
       <td style="text-align:right;">$${parseFloat(w.wholesale||0).toFixed(2)}</td>
       <td style="text-align:right;font-weight:600;">${sugg ? '$'+sugg.toFixed(2) : '—'}</td>
-      <td style="text-align:right;">${menu ? '$'+menu.toFixed(2) : '<span style="color:var(--text-lt);">—</span>'}</td>
+      <td style="text-align:right;">${inlineInput('menuPrice', menuB, 'Bottle $')}</td>
       <td style="text-align:right;">${cogsCell}</td>
       <td style="text-align:right;">${glass ? '$'+glass.toFixed(2) : '—'}</td>
+      <td style="text-align:right;">${inlineInput('menuPriceGlass', menuG, 'Glass $')}</td>
       <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="openWineModal('${w.id}')">Edit</button></td>
     </tr>`;
   }).join('');
+}
+
+function saveWineMenuPrice(id, field, val) {
+  const idx = __cache.wines.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const v = parseFloat(val) || null;
+  __cache.wines[idx][field] = v;
+  __db.collection('wine_list').doc(id).update({ [field]: v }).catch(e => console.error(e));
+  // Rerender only the COGS cell without full re-render to avoid losing focus
+  renderWine();
 }
 
 function openWineModal(id) {
@@ -2275,7 +2299,8 @@ function openWineModal(id) {
   document.getElementById('wm-region').value      = w ? (w.region||'') : '';
   document.getElementById('wm-vintage').value     = w ? (w.vintage||'') : '';
   document.getElementById('wm-wholesale').value   = w ? (w.wholesale||'') : '';
-  document.getElementById('wm-menu-price').value  = w ? (w.menuPrice||'') : '';
+  document.getElementById('wm-menu-price').value       = w ? (w.menuPrice||'')      : '';
+  document.getElementById('wm-menu-price-glass').value = w ? (w.menuPriceGlass||'') : '';
   document.getElementById('wine-m-delete').style.display = w ? 'inline-flex' : 'none';
   wineCalcPreview();
   document.getElementById('wine-modal').style.display = 'flex';
@@ -2303,7 +2328,8 @@ function saveWine() {
     region:     document.getElementById('wm-region').value.trim(),
     vintage:    document.getElementById('wm-vintage').value.trim(),
     wholesale,
-    menuPrice:  parseFloat(document.getElementById('wm-menu-price').value) || null,
+    menuPrice:      parseFloat(document.getElementById('wm-menu-price').value)       || null,
+    menuPriceGlass: parseFloat(document.getElementById('wm-menu-price-glass').value) || null,
   };
   if (id) {
     const idx = __cache.wines.findIndex(x => x.id === id);

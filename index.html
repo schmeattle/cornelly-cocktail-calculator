@@ -8,6 +8,7 @@
 <title>Beverage COGS Calculator — Cornelly</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <style>
     :root {
       --navy:    #1a4f8a;
@@ -572,6 +573,28 @@
       <div style="color:var(--text-lt);font-size:13px;" id="invoice-error-msg"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:12px;" id="invoice-error-reset">Try Again</button>
     </div>
+
+    <div class="card" style="margin-top:24px;">
+      <div class="card-header">
+        <h2>Import History (<span id="inv-hist-count">0</span>)</h2>
+      </div>
+      <div class="table-wrap">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Filename</th>
+              <th>Vendor</th>
+              <th style="text-align:center;">Items</th>
+              <th style="text-align:center;">Added</th>
+              <th style="text-align:center;">Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inv-hist-body"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ── WINE PAGE ── -->
@@ -782,7 +805,8 @@ const __fbConfig = {
   appId: "1:627263395752:web:20e24634ff4cef091daf9d"
 };
 const __app = firebase.initializeApp(__fbConfig, 'cocktail');
-const __db  = firebase.firestore(__app);
+const __db      = firebase.firestore(__app);
+const __storage = firebase.storage(__app);
 
 const __cache = { ingredients: [], recipes: [], inhouse: [] };
 
@@ -1045,6 +1069,7 @@ function showPage(name, pushHash=true) {
   if (name === 'builder')     { ensureDatalist(); updateRecipeCost(); }
   if (name === 'inventory')   renderInventory();
   if (name === 'wine')        renderWine();
+  if (name === 'invoice')     renderInvoiceHistory();
   document.querySelector('main').classList.toggle('wide', name === 'wine');
   if (name === 'invoice')     invReset();
 }
@@ -1827,6 +1852,95 @@ Naming rules (follow these exactly):
 - No trailing descriptors like "750ml" or "1L" in the name
 - Preserve abbreviations: DOC, GF, etc.`;
 
+// ═══════════════════════════════════════════════════
+// INVOICE HISTORY
+// ═══════════════════════════════════════════════════
+async function saveInvoiceToStorage(file) {
+  try {
+    const path = `invoices/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const ref  = __storage.ref(path);
+    await ref.put(file);
+    return await ref.getDownloadURL();
+  } catch(e) { console.warn('Storage upload failed:', e); return null; }
+}
+
+async function saveInvoiceHistory(record) {
+  try {
+    await __db.collection('invoice_history').doc(record.id).set(record);
+  } catch(e) { console.warn('History save failed:', e); }
+}
+
+async function loadInvoiceHistory() {
+  try {
+    const snap = await __db.collection('invoice_history').orderBy('timestamp','desc').limit(50).get();
+    return snap.docs.map(d => d.data());
+  } catch(e) { console.warn('History load failed:', e); return []; }
+}
+
+async function renderInvoiceHistory() {
+  const history = await loadInvoiceHistory();
+  document.getElementById('inv-hist-count').textContent = history.length;
+  const tbody = document.getElementById('inv-hist-body');
+  if (!history.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-lt);">No imports yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = history.map(h => {
+    const date = new Date(h.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const time = new Date(h.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const dlBtn = h.downloadURLs?.length
+      ? h.downloadURLs.map((url,i) => `<a href="${url}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;">⬇ File${h.downloadURLs.length>1?' '+(i+1):''}</a>`).join(' ')
+      : '<span style="color:var(--text-lt);font-size:11px;">—</span>';
+    const rescanBtn = h.downloadURLs?.length
+      ? `<button class="btn btn-outline btn-sm" style="font-size:11px;" onclick="rescanInvoice('${h.id}')">Re-scan</button>`
+      : '';
+    return `<tr>
+      <td style="white-space:nowrap;color:var(--text-lt);font-size:12px;">${date}<br>${time}</td>
+      <td style="font-size:12px;">${esc(h.filenames?.join(', ') || h.filename || '—')}</td>
+      <td style="font-size:12px;">${esc(h.vendor || '—')}</td>
+      <td style="text-align:center;">${h.itemCount || 0}</td>
+      <td style="text-align:center;color:var(--green);font-weight:600;">${h.added || 0}</td>
+      <td style="text-align:center;color:var(--navy2);font-weight:600;">${h.updated || 0}</td>
+      <td style="text-align:right;">${dlBtn} ${rescanBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function rescanInvoice(historyId) {
+  const snap = await __db.collection('invoice_history').doc(historyId).get();
+  const h = snap.data();
+  if (!h?.downloadURLs?.length) { showToast('No stored file to re-scan.','error'); return; }
+  invShow('invoice-processing');
+  document.getElementById('invoice-processing-msg').textContent = 'Fetching stored invoice…';
+  try {
+    const allParsed = [];
+    for (const url of h.downloadURLs) {
+      const blob = await fetch(url).then(r => r.blob());
+      const file = new File([blob], h.filenames?.[h.downloadURLs.indexOf(url)] || 'invoice', {type: blob.type});
+      document.getElementById('invoice-processing-msg').textContent = `Re-scanning ${file.name}…`;
+      const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+      const isPdf = file.type === 'application/pdf';
+      const contentBlock = isPdf
+        ? { type:'document', source:{type:'base64',media_type:'application/pdf',data:b64} }
+        : { type:'image',    source:{type:'base64',media_type:file.type||'image/jpeg',data:b64} };
+      const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','content-type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,messages:[{role:'user',content:[contentBlock,{type:'text',text:INVOICE_PROMPT}]}]})});
+      const data = await resp.json();
+      const parsed = JSON.parse(data.content[0].text.trim().replace(/^```json\n?|```$/g,'').trim());
+      parsed._filename = file.name;
+      const wineItems = (parsed.items||[]).filter(it=>it.type==='wine');
+      if (wineItems.length) {
+        document.getElementById('invoice-processing-msg').textContent = `Looking up ${wineItems.length} wine${wineItems.length>1?'s':''}…`;
+        try { parsed._wineDetails = await enrichWineDetails(wineItems.map(w=>({name:w.name,wineVarietal:w.wineVarietal||'',wineStyle:w.wineStyle||''}))); } catch(e) {}
+      }
+      allParsed.push(parsed);
+    }
+    renderInvoiceResults(allParsed, []);
+  } catch(e) {
+    document.getElementById('invoice-error-msg').textContent = e.message;
+    invShow('invoice-error');
+  }
+}
+
 function invShow(id) {
   ["invoice-upload-area","invoice-processing","invoice-results","invoice-error"].forEach(x => {
     document.getElementById(x).style.display = x === id ? "" : "none";
@@ -1851,6 +1965,13 @@ async function processInvoiceFiles(files) {
   const total = files.length;
   const allParsed = [];
   const errors = [];
+  const downloadURLs = [];
+  const filenames = files.map(f => f.name);
+
+  // Upload files to Storage in background while scanning
+  files.forEach(file => {
+    saveInvoiceToStorage(file).then(url => { if (url) downloadURLs.push(url); });
+  });
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -1921,7 +2042,7 @@ async function processInvoiceFiles(files) {
     return;
   }
 
-  renderInvoiceResults(allParsed, errors);
+  renderInvoiceResults(allParsed, errors, { downloadURLs, filenames });
 }
 
 let _wineDetails = {};
@@ -2059,7 +2180,7 @@ function importParsedItems(parsed) {
   return { added, updated, winesAdded, rows };
 }
 
-function renderInvoiceResults(allParsed, errors = []) {
+function renderInvoiceResults(allParsed, errors = [], storageInfo = {}) {
   // Import all items from all invoices
   let totalAdded = 0, totalUpdated = 0, totalWines = 0;
   const allRows = [];
@@ -2075,13 +2196,30 @@ function renderInvoiceResults(allParsed, errors = []) {
   saveIngredients();
   renderIngredients();
 
+  // Save import history record
+  const vendors = [...new Set(allParsed.map(p => p.vendor).filter(Boolean))];
+  const histId = 'ih_' + Date.now();
+  const histRecord = {
+    id:           histId,
+    timestamp:    Date.now(),
+    filenames:    storageInfo.filenames || allParsed.map(p => p._filename || '—'),
+    downloadURLs: storageInfo.downloadURLs || [],
+    vendor:       vendors.join(', '),
+    itemCount:    allRows.length,
+    added:        totalAdded,
+    updated:      totalUpdated,
+    winesAdded:   totalWines,
+    items:        allRows.map(r => ({ name: r.name, type: r.type, status: r.status })),
+  };
+  saveInvoiceHistory(histRecord);
+  setTimeout(renderInvoiceHistory, 1500); // slight delay to let Storage URLs resolve
+
   const fileCount = allParsed.length;
   const summary   = `${totalAdded} added · ${totalUpdated} updated${totalWines ? ` · ${totalWines} to wine list` : ''}`;
   document.getElementById("invoice-result-title").textContent =
     `Imported ${allRows.length} item${allRows.length === 1 ? '' : 's'} from ${fileCount} invoice${fileCount === 1 ? '' : 's'} — ${summary}`;
 
-  const vendors = [...new Set(allParsed.map(p => p.vendor).filter(Boolean))];
-  const dates   = [...new Set(allParsed.map(p => p.invoiceDate).filter(Boolean))];
+  const dates = [...new Set(allParsed.map(p => p.invoiceDate).filter(Boolean))];
   document.getElementById("invoice-result-sub").textContent =
     [vendors.join(', '), dates.join(', ')].filter(Boolean).join(' · ') +
     (errors.length ? ` · ⚠ ${errors.length} file${errors.length > 1 ? 's' : ''} failed` : '');
@@ -2390,6 +2528,7 @@ function deleteWine() {
   ensureDatalist();
   const initialPage = location.hash.replace('#','') || 'builder';
   showPage(initialPage, false);
+  renderInvoiceHistory();
   document.getElementById('wine-modal').addEventListener('click', function(e) {
     if (e.target === this) closeWineModal();
   });

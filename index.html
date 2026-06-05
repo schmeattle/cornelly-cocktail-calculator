@@ -2258,15 +2258,14 @@ function renderWine() {
     }
     const badgeBg  = STYLE_BADGE[w.style] || '#eee';
     const badgeClr = STYLE_COLOR[w.style] || '#333';
-    const priceCell = (field, val) => val
-      ? `<span class="wine-price-display" data-id="${w.id}" data-field="${field}"
-            onclick="wineStartEdit(this)"
-            style="cursor:pointer;color:var(--text);font-weight:500;">$${parseFloat(val).toFixed(2)}</span>`
-      : `<input type="number" min="0" step="0.01" placeholder="—"
-            style="width:62px;text-align:right;border:1px solid var(--gray);border-radius:4px;padding:2px 4px;font-size:12px;font-family:inherit;background:#fff;"
-            onchange="saveWineMenuPrice('${w.id}','${field}',this.value)"
-            onblur="if(this.value)saveWineMenuPrice('${w.id}','${field}',this.value)"
-            onclick="event.stopPropagation()" />`;
+    const priceCell = (field, val) => {
+      const display = val ? `$${parseFloat(val).toFixed(2)}` : '';
+      return `<input type="text" value="${display}" placeholder="—"
+        style="width:66px;text-align:right;border:1px solid var(--gray);border-radius:4px;padding:2px 5px;font-size:12px;font-family:inherit;background:#fff;font-weight:${val?'600':'400'};"
+        onfocus="this.value=this.value.replace('$','');this.style.fontWeight='400';"
+        onblur="const n=parseFloat(this.value);if(n>0){saveWineMenuPrice('${w.id}','${field}',n);this.value='$'+n.toFixed(2);this.style.fontWeight='600';}else{this.value='';}"
+        onclick="event.stopPropagation()" />`;
+    };
     return `<tr>
       <td>${esc(w.varietal||'')}</td>
       <td><span style="background:${badgeBg};color:${badgeClr};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${esc(w.style||'')}</span></td>

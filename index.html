@@ -596,17 +596,17 @@
         <table id="wine-table">
           <thead>
             <tr>
-              <th class="sortable" onclick="setWineSort('varietal')">Varietal</th>
-              <th class="sortable" onclick="setWineSort('style')">Style</th>
-              <th class="sortable" onclick="setWineSort('producer')">Producer</th>
-              <th>Bottling</th>
-              <th class="sortable" onclick="setWineSort('region')">Region</th>
-              <th class="sortable" onclick="setWineSort('vintage')">Vintage</th>
-              <th class="sortable" onclick="setWineSort('wholesale')" style="text-align:right;">Wholesale</th>
-              <th style="text-align:right;">Sugg. Bottle</th>
-              <th style="text-align:right;">Menu Price</th>
-              <th style="text-align:right;">COGS %</th>
-              <th style="text-align:right;">6 oz Glass</th>
+              <th class="sortable" id="wth-varietal" onclick="setWineSort('varietal')">Varietal</th>
+              <th class="sortable" id="wth-style"    onclick="setWineSort('style')">Style</th>
+              <th class="sortable" id="wth-producer" onclick="setWineSort('producer')">Producer</th>
+              <th class="sortable" id="wth-bottling" onclick="setWineSort('bottling')">Bottling</th>
+              <th class="sortable" id="wth-region"   onclick="setWineSort('region')">Region</th>
+              <th class="sortable" id="wth-vintage"  onclick="setWineSort('vintage')">Vintage</th>
+              <th class="sortable" id="wth-wholesale" onclick="setWineSort('wholesale')" style="text-align:right;">Wholesale</th>
+              <th class="sortable" id="wth-sugg"     onclick="setWineSort('sugg')"     style="text-align:right;">Sugg. Bottle</th>
+              <th class="sortable" id="wth-menu"     onclick="setWineSort('menu')"     style="text-align:right;">Menu Price</th>
+              <th class="sortable" id="wth-cogs"     onclick="setWineSort('cogs')"     style="text-align:right;">COGS %</th>
+              <th class="sortable" id="wth-glass"    onclick="setWineSort('glass')"    style="text-align:right;">6 oz Glass</th>
               <th></th>
             </tr>
           </thead>
@@ -2176,20 +2176,39 @@ function setWineSort(col) {
   renderWine();
 }
 
+const WINE_SORT_COLS = ['varietal','style','producer','bottling','region','vintage','wholesale','sugg','menu','cogs','glass'];
+function wSortVal(w, col) {
+  const sugg = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : 0;
+  const menu = parseFloat(w.menuPrice) || 0;
+  switch(col) {
+    case 'wholesale': return parseFloat(w.wholesale) || 0;
+    case 'sugg':      return sugg;
+    case 'menu':      return menu;
+    case 'cogs':      return (sugg && menu) ? w.wholesale / menu : 0;
+    case 'glass':     return sugg ? wineSuggGlass(sugg) : 0;
+    default:          return String(w[col] || '').toLowerCase();
+  }
+}
+
 function renderWine() {
   const styleFilter  = document.getElementById('wine-f-style').value.toLowerCase();
   const search       = (document.getElementById('wine-f-search').value || '').toLowerCase();
   let wines = __cache.wines.filter(w => {
-    if (styleFilter && w.style.toLowerCase() !== styleFilter) return false;
+    if (styleFilter && (w.style||'').toLowerCase() !== styleFilter) return false;
     if (search && !['varietal','style','producer','bottling','region','vintage'].some(k => (w[k]||'').toLowerCase().includes(search))) return false;
     return true;
   });
   const col = __wineSortCol, asc = __wineSortAsc;
   wines.sort((a,b) => {
-    let av = a[col] ?? '', bv = b[col] ?? '';
-    if (col === 'wholesale') { av = parseFloat(av)||0; bv = parseFloat(bv)||0; }
-    else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
+    const av = wSortVal(a, col), bv = wSortVal(b, col);
     return av < bv ? (asc?-1:1) : av > bv ? (asc?1:-1) : 0;
+  });
+  // Update sort indicators
+  WINE_SORT_COLS.forEach(c => {
+    const th = document.getElementById('wth-' + c);
+    if (!th) return;
+    th.classList.remove('sort-asc','sort-desc');
+    if (c === col) th.classList.add(asc ? 'sort-asc' : 'sort-desc');
   });
   document.getElementById('wine-count').textContent = __cache.wines.length;
   const tbody = document.getElementById('wine-body');

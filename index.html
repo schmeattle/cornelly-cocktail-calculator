@@ -609,6 +609,7 @@
               <th class="sortable" id="wth-cogs"      onclick="setWineSort('cogs')"      style="text-align:right;">COGS %</th>
               <th class="sortable" id="wth-glass"     onclick="setWineSort('glass')"     style="text-align:right;">Sugg. Glass</th>
               <th class="sortable" id="wth-glassMenu" onclick="setWineSort('glassMenu')" style="text-align:right;">Glass Menu $</th>
+              <th class="sortable" id="wth-glassCogs" onclick="setWineSort('glassCogs')" style="text-align:right;">Glass COGS %</th>
               <th></th>
             </tr>
           </thead>
@@ -2192,7 +2193,7 @@ function setWineSort(col) {
   renderWine();
 }
 
-const WINE_SORT_COLS = ['varietal','style','producer','bottling','region','vintage','wholesale','sugg','menu','cogs','glass','glassMenu'];
+const WINE_SORT_COLS = ['varietal','style','producer','bottling','region','vintage','wholesale','sugg','menu','cogs','glass','glassMenu','glassCogs'];
 function wSortVal(w, col) {
   const sugg = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : 0;
   const menu = parseFloat(w.menuPrice) || 0;
@@ -2203,6 +2204,7 @@ function wSortVal(w, col) {
     case 'cogs':      return (sugg && menu) ? w.wholesale / menu : 0;
     case 'glass':     return w.wholesale > 0 ? wineSuggGlass(w.wholesale) : 0;
     case 'glassMenu': return parseFloat(w.menuPriceGlass) || 0;
+    case 'glassCogs': { const mg = parseFloat(w.menuPriceGlass); return (mg && w.wholesale) ? (w.wholesale/25.36*6)/mg : 0; }
     default:          return String(w[col] || '').toLowerCase();
   }
 }
@@ -2275,6 +2277,13 @@ function renderWine() {
       <td style="text-align:right;">${cogsCell}</td>
       <td style="text-align:right;">${glass ? '$'+glass.toFixed(2) : '—'}</td>
       <td style="text-align:right;">${inlineInput('menuPriceGlass', menuG, 'Glass $')}</td>
+      <td style="text-align:right;">${(() => {
+        if (!menuG || !w.wholesale) return '—';
+        const pourCost = (w.wholesale / 25.36) * 6;
+        const cogs = pourCost / menuG;
+        const color = cogs > 0.32 ? 'var(--red)' : cogs < 0.22 ? 'var(--green)' : 'var(--text)';
+        return `<span style="color:${color};font-weight:600;">${(cogs*100).toFixed(1)}%</span>`;
+      })()}</td>
       <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="openWineModal('${w.id}')">Edit</button></td>
     </tr>`;
   }).join('');

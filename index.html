@@ -1759,13 +1759,56 @@ Rules:
 - If price is unclear, use 0 and note it
 - Match type to the closest option from the list above
 
-Wine style inference (apply even if not explicitly stated on the invoice):
-- Cab, Cabernet, Cabernet Sauvignon, Merlot, Pinot Noir, Syrah, Shiraz, Malbec, Zinfandel, Nebbiolo, Sangiovese, Tempranillo, Barbera, Dolcetto, Grenache, Mourvèdre → Red
-- Chardonnay, Chard, Sauvignon Blanc, SB, Riesling, Pinot Grigio, Pinot Gris, Albariño, Vermentino, Soave, Chablis, Viognier, Grüner Veltliner, Muscadet, White Burgundy → White
-- Rosé, Rosato, Rosado → Rosé
-- Prosecco, Champagne, Cava, Crémant, Pétillant, Pét-Nat, Sekt, Espumante → Sparkling
-- Port, Porto, Sherry, Madeira, Marsala, Vin Santo, Sauternes, Banyuls, Late Harvest, Ice Wine → Dessert / Fortified
-- Skin contact, Amber, Orange wine → Orange
+Wine style inference — scan the product name for ANY of these words/abbreviations and set wineStyle and wineVarietal accordingly. Do this even when the word appears mid-name (e.g. "Côte Blonde Syrah" → Syrah/Red, "Two Blondes Sauvignon Blanc" → Sauvignon Blanc/White):
+
+Red wines (wineStyle: Red):
+- Cab, Cabernet → Cabernet Sauvignon
+- Merlot → Merlot
+- Pinot Noir, PN → Pinot Noir
+- Syrah, Shiraz → Syrah
+- Malbec → Malbec
+- Zinfandel, Zin → Zinfandel
+- Nebbiolo → Nebbiolo
+- Sangiovese → Sangiovese
+- Tempranillo → Tempranillo
+- Barbera → Barbera
+- Dolcetto → Dolcetto
+- Grenache → Grenache
+- Mourvèdre → Mourvèdre
+- Gamay → Gamay
+- Montepulciano → Montepulciano
+- Primitivo → Primitivo
+- Corvina, Ripasso, Amarone → Corvina blend
+- Chianti, Brunello, Barolo, Barbaresco, Valpolicella → set style Red, varietal = wine type name
+
+White wines (wineStyle: White):
+- Chardonnay, Chard → Chardonnay
+- Sauvignon Blanc, SB, Sauv Blanc → Sauvignon Blanc
+- Riesling → Riesling
+- Pinot Grigio, Pinot Gris, PG → Pinot Grigio
+- Albariño → Albariño
+- Vermentino → Vermentino
+- Soave → Garganega blend (Soave)
+- Viognier → Viognier
+- Grüner Veltliner, Gruner → Grüner Veltliner
+- Muscadet → Melon de Bourgogne
+- Chenin Blanc → Chenin Blanc
+- Verdejo → Verdejo
+- Falanghina → Falanghina
+- Trebbiano → Trebbiano
+- Assyrtiko → Assyrtiko
+- Gewürztraminer → Gewürztraminer
+- Chablis, White Burgundy → Chardonnay
+
+Rosé (wineStyle: Rosé): Rosé, Rosato, Rosado
+
+Sparkling (wineStyle: Sparkling): Prosecco, Champagne, Cava, Crémant, Pétillant, Pét-Nat, Sekt, Espumante, Franciacorta, Moscato d'Asti
+
+Dessert / Fortified (wineStyle: Dessert / Fortified): Port, Porto, Sherry, Madeira, Marsala, Vin Santo, Sauternes, Banyuls, Late Harvest, Ice Wine, Passito
+
+Orange (wineStyle: Orange): Skin contact, Amber, Orange wine
+
+IMPORTANT: If the varietal or wine type word appears anywhere in the name, always set wineVarietal and wineStyle — do not leave them blank.
 
 Naming rules (follow these exactly):
 - Branded/bottled products: Title Case, brand name first — e.g. "Woodenville Bourbon", "Amaro Averna", "Aviation Gin", "Malfy Arancia", "Luxardo Bitter Liqueur", "Grapefruit Bitters (Fee Brothers)", "Noilly Prat Vermouth"
@@ -1971,7 +2014,7 @@ function importParsedItems(parsed) {
       });
       if (!alreadyInList) {
         const wineId = 'w_' + Date.now() + Math.random().toString(36).slice(2);
-        const wine = { id: wineId, varietal: wineDetail.varietal || '', style: wineDetail.style || '', producer: wineDetail.producer || nameSansVintage, bottling: wineDetail.bottling || 'N/A', region: wineDetail.region || '', vintage: wineDetail.vintage || vintage, wholesale, menuPrice: null };
+        const wine = { id: wineId, varietal: wineDetail.varietal || item.wineVarietal || '', style: wineDetail.style || item.wineStyle || '', producer: wineDetail.producer || nameSansVintage, bottling: wineDetail.bottling || 'N/A', region: wineDetail.region || '', vintage: wineDetail.vintage || vintage, wholesale, menuPrice: null };
         __cache.wines.push(wine);
         __db.collection('wine_list').doc(wineId).set(wine).catch(e => console.error(e));
         winesAdded++;

@@ -821,6 +821,7 @@ async function initFirebase() {
       __db.collection('cocktail_recipes').get(),
       __db.collection('cocktail_inhouse').get(),
     ]);
+    console.log('[init] ings:', ings.size, 'recs:', recs.size, 'ihs:', ihs.size);
     if (!ings.empty)  __cache.ingredients = ings.docs.map(d => ({id:d.id,...d.data()}));
     else              await seedIngredients();
     if (!recs.empty)  __cache.recipes     = recs.docs.map(d => ({id:d.id,...d.data()}));
@@ -828,7 +829,8 @@ async function initFirebase() {
     __cache.inhouse = ihs.docs.map(d => ({id:d.id,...d.data()}));
     const wines = await __db.collection('wine_list').get();
     __cache.wines = wines.docs.map(d => ({id:d.id,...d.data()}));
-  } catch(e) { console.error('Firebase init:', e); }
+    console.log('[init] done — ings:', __cache.ingredients.length, 'recs:', __cache.recipes.length, 'wines:', __cache.wines.length);
+  } catch(e) { console.error('[init] Firebase init error:', e); }
 }
 
 function saveIngredients() {

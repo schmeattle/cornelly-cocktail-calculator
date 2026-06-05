@@ -721,6 +721,22 @@
   </div>
 </div>
 
+<!-- Dedup Confirmation Modal -->
+<div class="modal-overlay" id="dedup-modal" style="display:none;">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <h2>Confirm Duplicates</h2>
+      <button class="modal-close" onclick="document.getElementById('dedup-modal').style.display='none'">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-lt);margin-bottom:16px;">Sonnet identified these likely duplicates. Uncheck any you want to keep separate, then confirm.</p>
+    <div id="dedup-modal-list" style="max-height:380px;overflow-y:auto;"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="confirmSmartDedup()">Remove Checked</button>
+      <button class="btn btn-outline" onclick="document.getElementById('dedup-modal').style.display='none'">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Wine Modal (Add/Edit) -->
 <div class="modal-overlay" id="wine-modal">
   <div class="modal" style="max-width:600px;">
@@ -2270,37 +2286,114 @@ function renderInvoiceResults(allParsed, errors = [], storageInfo = {}) {
   invShow("invoice-results");
 }
 
-function deduplicateIngredients() {
+function mergeDuplicates(keepId, removeIds) {
+  const keepIdx = __cache.ingredients.findIndex(i => i.id === keepId);
+  if (keepIdx < 0) return;
+  const keeper = __cache.ingredients[keepIdx];
+  const combinedHistory = [...(keeper.priceHistory || [])];
+  removeIds.forEach(rid => {
+    const dup = __cache.ingredients.find(i => i.id === rid);
+    if (!dup) return;
+    (dup.priceHistory || []).forEach(h => combinedHistory.push(h));
+    if (Math.abs((dup.price || 0) - (keeper.price || 0)) > 0.001)
+      combinedHistory.push({ price: dup.price, qty: dup.qty, unit: dup.unit, date: null });
+    __db.collection('cocktail_ingredients').doc(rid).delete().catch(e => console.error(e));
+  });
+  keeper.priceHistory = combinedHistory;
+  __db.collection('cocktail_ingredients').doc(keeper.id).set(keeper).catch(e => console.error(e));
+  __cache.ingredients = __cache.ingredients.filter(i => !removeIds.includes(i.id));
+}
+
+let _dedupGroups = [];
+
+async function deduplicateIngredients() {
+  // Step 1: exact-match dedup (instant)
   const groups = {};
-  __cache.ingredients.forEach(ing => {
+  __cache.ingredients.filter(i => i.name).forEach(ing => {
     const key = ing.name.trim().toLowerCase();
     if (!groups[key]) groups[key] = [];
     groups[key].push(ing);
   });
-  const dupeKeys = Object.keys(groups).filter(k => groups[k].length > 1);
-  if (!dupeKeys.length) { showToast('No duplicates found.'); return; }
-  let totalRemoved = 0;
-  dupeKeys.forEach(key => {
-    const group = groups[key];
-    // Keep first entry, merge price histories from all others into it
-    const keeper = group[0];
-    const merged = group.slice(1);
-    const combinedHistory = [...(keeper.priceHistory || [])];
-    merged.forEach(dup => {
-      (dup.priceHistory || []).forEach(h => combinedHistory.push(h));
-      // If the dup has a different price, record it as history on the keeper
-      if (Math.abs((dup.price || 0) - (keeper.price || 0)) > 0.001) {
-        combinedHistory.push({ price: dup.price, qty: dup.qty, unit: dup.unit, date: null });
-      }
-      __db.collection('cocktail_ingredients').doc(dup.id).delete().catch(e => console.error(e));
-      totalRemoved++;
-    });
-    keeper.priceHistory = combinedHistory;
-    __db.collection('cocktail_ingredients').doc(keeper.id).set(keeper).catch(e => console.error(e));
+  const exactDupes = Object.keys(groups).filter(k => groups[k].length > 1);
+  let exactRemoved = 0;
+  exactDupes.forEach(key => {
+    const [keeper, ...dupes] = groups[key];
+    mergeDuplicates(keeper.id, dupes.map(d => d.id));
+    exactRemoved += dupes.length;
   });
-  __cache.ingredients = Object.values(groups).map(g => g[0]);
+  if (exactRemoved) { renderIngredients(); showToast(`Removed ${exactRemoved} exact duplicate${exactRemoved === 1 ? '' : 's'}.`); }
+
+  // Step 2: Sonnet semantic dedup
+  const names = __cache.ingredients.filter(i => i.name).map(i => i.name);
+  if (names.length < 2) { if (!exactRemoved) showToast('No duplicates found.'); return; }
+
+  const btn = document.getElementById('dedup-btn');
+  btn.disabled = true; btn.textContent = 'Scanning…';
+
+  try {
+    const prompt = `You are reviewing a restaurant bar program ingredient list for duplicates.
+
+Ingredient names:
+${names.map((n,i) => `${i+1}. ${n}`).join('\n')}
+
+Identify groups of names that clearly refer to the same product (same brand + product, possibly with different year/format/spelling variations). Only flag HIGH-CONFIDENCE duplicates — do not flag items that might be different SKUs.
+
+Return ONLY a JSON array, no markdown:
+[
+  { "keep": "<exact name to keep>", "remove": ["<exact name to remove>", ...], "reason": "<brief reason>" }
+]
+
+Return an empty array [] if no clear duplicates found.`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim();
+    _dedupGroups = JSON.parse(raw);
+
+    if (!_dedupGroups.length) {
+      showToast(exactRemoved ? 'No further duplicates found.' : 'No duplicates found.');
+      return;
+    }
+
+    // Show confirmation modal
+    document.getElementById('dedup-modal-list').innerHTML = _dedupGroups.map((g, i) => `
+      <div style="padding:12px;border:1px solid var(--gray-lt);border-radius:8px;margin-bottom:10px;background:#fafafa;">
+        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;">
+          <input type="checkbox" class="dedup-check" data-idx="${i}" checked style="margin-top:3px;flex-shrink:0;" />
+          <div>
+            <div style="font-size:13px;"><strong>Keep:</strong> ${esc(g.keep)}</div>
+            <div style="font-size:13px;color:var(--red);margin-top:2px;"><strong>Remove:</strong> ${g.remove.map(r => esc(r)).join(', ')}</div>
+            <div style="font-size:11px;color:var(--text-lt);margin-top:4px;">${esc(g.reason)}</div>
+          </div>
+        </label>
+      </div>`).join('');
+    document.getElementById('dedup-modal').style.display = 'flex';
+  } catch(e) {
+    showToast('Scan failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Deduplicate';
+  }
+}
+
+function confirmSmartDedup() {
+  const checks = document.querySelectorAll('.dedup-check');
+  let removed = 0;
+  checks.forEach(cb => {
+    if (!cb.checked) return;
+    const g = _dedupGroups[parseInt(cb.dataset.idx)];
+    const keeper = __cache.ingredients.find(i => i.name === g.keep);
+    if (!keeper) return;
+    const removeIds = g.remove.map(rName => __cache.ingredients.find(i => i.name === rName)?.id).filter(Boolean);
+    mergeDuplicates(keeper.id, removeIds);
+    removed += removeIds.length;
+  });
+  document.getElementById('dedup-modal').style.display = 'none';
   renderIngredients();
-  showToast(`Removed ${totalRemoved} duplicate${totalRemoved === 1 ? '' : 's'}.`);
+  showToast(`Removed ${removed} duplicate${removed === 1 ? '' : 's'}.`);
 }
 
 // ═══════════════════════════════════════════════════

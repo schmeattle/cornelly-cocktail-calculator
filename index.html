@@ -1742,7 +1742,7 @@ Return ONLY a JSON object (no markdown, no explanation) in this exact format:
   "invoiceDate": "YYYY-MM-DD format, or null if not found",
   "items": [
     {
-      "name": "product name, concise and clear (e.g. 'Campari', 'Tito's Vodka', 'Modelo Especial')",
+      "name": "product name following the naming rules below",
       "type": "one of: amaro / liqueur, bitters, brandy, gin, juice, syrup, tequila, vermouth / wine, vodka, whiskey, beer, wine, na beverage, other",
       "purchaseQty": <number - the volume or count in the purchase unit>,
       "purchaseUnit": "one of: ml, l, oz, gal, each, case",
@@ -1760,7 +1760,15 @@ Rules:
 - Use purchaseUnit:ml only for bulk/bag-in-box liquid quantities
 - Skip non-product line items (delivery charges, taxes, deposits, credits)
 - If price is unclear, use 0 and note it
-- Match type to the closest option from the list above`;
+- Match type to the closest option from the list above
+
+Naming rules (follow these exactly):
+- Branded/bottled products: Title Case, brand name first — e.g. "Woodenville Bourbon", "Amaro Averna", "Aviation Gin", "Malfy Arancia", "Luxardo Bitter Liqueur", "Grapefruit Bitters (Fee Brothers)", "Noilly Prat Vermouth"
+- Use parentheses for clarifying detail — e.g. "Barrel Aged Maple Syrup (Woodenville)", "Sugar (White)"
+- Amaro category: prefix with "Amaro" — e.g. "Amaro Nonino", "Amaro Averna", "Amaro Sibona"
+- Generic produce/pantry items: all lowercase — e.g. "lemon juice", "simple syrup", "cucumber", "mint"
+- No trailing descriptors like "750ml" or "1L" in the name
+- Preserve abbreviations: DOC, GF, etc.`;
 
 function invShow(id) {
   ["invoice-upload-area","invoice-processing","invoice-results","invoice-error"].forEach(x => {

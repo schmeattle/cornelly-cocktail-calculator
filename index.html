@@ -2010,7 +2010,13 @@ function importParsedItems(parsed) {
       const nameSansVintage = name.replace(/\b(19|20)\d{2}\b/, '').trim().replace(/\s+/g, ' ');
       const alreadyInList   = __cache.wines.some(w => {
         const full = (w.producer + ' ' + (w.bottling !== 'N/A' ? w.bottling : '')).trim().toLowerCase();
-        return full === nameSansVintage.toLowerCase() || w.producer?.toLowerCase() === nameSansVintage.toLowerCase();
+        const nameMatch = full === nameSansVintage.toLowerCase() || w.producer?.toLowerCase() === nameSansVintage.toLowerCase();
+        // Also catch duplicates where web search returned a different producer string but same wine
+        const fingerprint = w.varietal && vintage && wholesale &&
+          w.varietal.toLowerCase() === (wineDetail.varietal || item.wineVarietal || '').toLowerCase() &&
+          w.vintage === vintage &&
+          Math.abs((w.wholesale || 0) - wholesale) < 0.01;
+        return nameMatch || fingerprint;
       });
       if (!alreadyInList) {
         const wineId = 'w_' + Date.now() + Math.random().toString(36).slice(2);

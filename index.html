@@ -2028,7 +2028,16 @@ function importParsedItems(parsed) {
       });
       if (!alreadyInList) {
         const wineId = 'w_' + Date.now() + Math.random().toString(36).slice(2);
-        const wine = { id: wineId, varietal: wineDetail.varietal || item.wineVarietal || '', style: wineDetail.style || item.wineStyle || '', producer: wineDetail.producer || nameSansVintage, bottling: wineDetail.bottling || 'N/A', region: wineDetail.region || '', vintage: wineDetail.vintage || vintage, wholesale, menuPrice: null };
+        const wine = {
+          id:       wineId,
+          varietal: wineDetail.varietal || item.wineVarietal || '',
+          style:    wineDetail.style    || item.wineStyle    || '',
+          producer: wineDetail.producer || nameSansVintage,
+          bottling: wineDetail.bottling || 'N/A',
+          region:   wineDetail.region   || '',
+          vintage:  wineDetail.vintage  || vintage,
+          wholesale, menuPrice: null,
+        };
         __cache.wines.push(wine);
         __db.collection('wine_list').doc(wineId).set(wine).catch(e => console.error(e));
         winesAdded++;

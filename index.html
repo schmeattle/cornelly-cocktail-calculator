@@ -348,7 +348,10 @@
     <div class="card">
       <div class="card-header">
         <h2>All Ingredients (<span id="ing-count">0</span>)</h2>
-        <button class="btn btn-gold btn-sm" onclick="openIngModal()">+ Add Ingredient</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" id="dedup-btn" onclick="deduplicateIngredients()">Deduplicate</button>
+          <button class="btn btn-gold btn-sm" onclick="openIngModal()">+ Add Ingredient</button>
+        </div>
       </div>
       <div class="filter-bar">
         <input type="text" id="ing-search" placeholder="Search ingredients…" oninput="renderIngredients()" />
@@ -1863,20 +1866,21 @@ document.getElementById("invoice-add-btn").addEventListener("click", () => {
     const qty   = parseFloat(row.querySelector(".inv-qty").value)  || 0;
     const price = parseFloat(row.querySelector(".inv-cost").value) || 0;
     const unit  = row.querySelector(".inv-unit").value;
-    const ing = {
-      id:       String(Date.now()) + Math.random().toString(36).slice(2),
-      name,
-      type:     row.querySelector(".inv-type").value,
-      qty,
-      unit,
-      price,
-    };
+    const type  = row.querySelector(".inv-type").value;
     const existIdx = __cache.ingredients.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
     if (existIdx >= 0) {
-      __cache.ingredients[existIdx] = { ...__cache.ingredients[existIdx], ...ing, id: __cache.ingredients[existIdx].id };
+      const old = __cache.ingredients[existIdx];
+      const priceChanged = Math.abs((old.price || 0) - price) > 0.001 ||
+                           Math.abs((old.qty   || 0) - qty)   > 0.001 ||
+                           old.unit !== unit;
+      const history = old.priceHistory || [];
+      if (priceChanged) {
+        history.unshift({ price: old.price, qty: old.qty, unit: old.unit, date: _invoiceDate || new Date().toISOString().slice(0,10) });
+      }
+      __cache.ingredients[existIdx] = { ...old, name, type, qty, unit, price, priceHistory: history };
       updated++;
     } else {
-      __cache.ingredients.push(ing);
+      __cache.ingredients.push({ id: String(Date.now()) + Math.random().toString(36).slice(2), name, type, qty, unit, price, priceHistory: [] });
       added++;
     }
   });
@@ -1886,6 +1890,39 @@ document.getElementById("invoice-add-btn").addEventListener("click", () => {
   invReset();
   showPage('ingredients');
 });
+
+function deduplicateIngredients() {
+  const groups = {};
+  __cache.ingredients.forEach(ing => {
+    const key = ing.name.trim().toLowerCase();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(ing);
+  });
+  const dupeKeys = Object.keys(groups).filter(k => groups[k].length > 1);
+  if (!dupeKeys.length) { showToast('No duplicates found.'); return; }
+  let totalRemoved = 0;
+  dupeKeys.forEach(key => {
+    const group = groups[key];
+    // Keep first entry, merge price histories from all others into it
+    const keeper = group[0];
+    const merged = group.slice(1);
+    const combinedHistory = [...(keeper.priceHistory || [])];
+    merged.forEach(dup => {
+      (dup.priceHistory || []).forEach(h => combinedHistory.push(h));
+      // If the dup has a different price, record it as history on the keeper
+      if (Math.abs((dup.price || 0) - (keeper.price || 0)) > 0.001) {
+        combinedHistory.push({ price: dup.price, qty: dup.qty, unit: dup.unit, date: null });
+      }
+      __db.collection('cocktail_ingredients').doc(dup.id).delete().catch(e => console.error(e));
+      totalRemoved++;
+    });
+    keeper.priceHistory = combinedHistory;
+    __db.collection('cocktail_ingredients').doc(keeper.id).set(keeper).catch(e => console.error(e));
+  });
+  __cache.ingredients = Object.values(groups).map(g => g[0]);
+  renderIngredients();
+  showToast(`Removed ${totalRemoved} duplicate${totalRemoved === 1 ? '' : 's'}.`);
+}
 
 // ═══════════════════════════════════════════════════
 // WINE

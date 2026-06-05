@@ -1771,6 +1771,7 @@ Return ONLY a JSON object (no markdown, no explanation) in this exact format:
 {
   "vendor": "vendor name from invoice header",
   "invoiceDate": "YYYY-MM-DD format, or null if not found",
+  "taxRate": <number - tax rate as a decimal, e.g. 0.105 for 10.5%. Calculate from the invoice totals: tax amount divided by pre-tax subtotal. Use 0 if no tax found.>,
   "items": [
     {
       "name": "product name following the naming rules below",
@@ -1779,7 +1780,7 @@ Return ONLY a JSON object (no markdown, no explanation) in this exact format:
       "wineVarietal": "for wine items only — grape varietal inferred from name if possible (e.g. Cab/Cabernet → Cabernet Sauvignon, Chard → Chardonnay, PN/Pinot Noir → Pinot Noir); empty string if unknown",
       "purchaseQty": <number - the volume or count in the purchase unit>,
       "purchaseUnit": "one of: ml, l, oz, gal, each, case",
-      "purchaseCost": <number - total line item cost in dollars, NOT unit price>,
+      "purchaseCost": <number - pre-tax line item total in dollars, NOT unit price>,
       "wineVintage": "for wine items only — 4-digit year if present; also expand 2-digit suffixes (e.g. '24' → '2024', 'Otto 24' → '2024'); use 'NV' for non-vintage wines (Cava, Prosecco, Champagne, Sherry, Madeira, etc.) or when NV is stated; empty string for non-wine items",
       "notes": "any uncertainty about unit, price, or product details, or empty string"
     }
@@ -2118,9 +2119,10 @@ Rules:
 let _invoiceDate = null;
 
 function importParsedItems(parsed) {
-  const vendor  = parsed.vendor || "";
-  const date    = parsed.invoiceDate || new Date().toISOString().slice(0,10);
-  const details = parsed._wineDetails || {};
+  const vendor   = parsed.vendor || "";
+  const date     = parsed.invoiceDate || new Date().toISOString().slice(0,10);
+  const details  = parsed._wineDetails || {};
+  const taxRate  = parseFloat(parsed.taxRate) || 0;
   let added = 0, updated = 0, winesAdded = 0;
   const rows = [];
 
@@ -2128,7 +2130,7 @@ function importParsedItems(parsed) {
     const name  = (item.name || "").trim();
     if (!name) return;
     const qty   = parseFloat(item.purchaseQty)  || 0;
-    const price = parseFloat(item.purchaseCost) || 0;
+    const price = parseFloat(((parseFloat(item.purchaseCost) || 0) * (1 + taxRate)).toFixed(2));
     const unit  = item.purchaseUnit || "each";
     const type  = item.type         || "other";
     let status  = 'added';

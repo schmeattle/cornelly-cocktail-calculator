@@ -50,8 +50,8 @@
     nav button.active { background: var(--gold); color: var(--navy); font-weight: 700; }
 
     /* ── Layout ── */
-    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 80px; }
-    #page-wine { max-width: 1600px; }
+    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 80px; transition: max-width .2s; }
+    main.wide { max-width: 1600px; }
     .page { display: none; }
     .page.active { display: block; }
     .page-title { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
@@ -1044,6 +1044,7 @@ function showPage(name, pushHash=true) {
   if (name === 'builder')     { ensureDatalist(); updateRecipeCost(); }
   if (name === 'inventory')   renderInventory();
   if (name === 'wine')        renderWine();
+  document.querySelector('main').classList.toggle('wide', name === 'wine');
   if (name === 'invoice')     invReset();
 }
 window.addEventListener('hashchange', () => {

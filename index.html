@@ -1739,6 +1739,8 @@ Return ONLY a JSON object (no markdown, no explanation) in this exact format:
     {
       "name": "product name following the naming rules below",
       "type": "one of: amaro / liqueur, bitters, brandy, gin, juice, syrup, tequila, vermouth / wine, vodka, whiskey, beer, wine, na beverage, other",
+      "wineStyle": "for wine items only — one of: Red, White, Rosé, Orange, Sparkling, Dessert / Fortified — infer from varietal name if not stated; empty string for non-wine",
+      "wineVarietal": "for wine items only — grape varietal inferred from name if possible (e.g. Cab/Cabernet → Cabernet Sauvignon, Chard → Chardonnay, PN/Pinot Noir → Pinot Noir); empty string if unknown",
       "purchaseQty": <number - the volume or count in the purchase unit>,
       "purchaseUnit": "one of: ml, l, oz, gal, each, case",
       "purchaseCost": <number - total line item cost in dollars, NOT unit price>,
@@ -1756,6 +1758,14 @@ Rules:
 - Skip non-product line items (delivery charges, taxes, deposits, credits)
 - If price is unclear, use 0 and note it
 - Match type to the closest option from the list above
+
+Wine style inference (apply even if not explicitly stated on the invoice):
+- Cab, Cabernet, Cabernet Sauvignon, Merlot, Pinot Noir, Syrah, Shiraz, Malbec, Zinfandel, Nebbiolo, Sangiovese, Tempranillo, Barbera, Dolcetto, Grenache, Mourvèdre → Red
+- Chardonnay, Chard, Sauvignon Blanc, SB, Riesling, Pinot Grigio, Pinot Gris, Albariño, Vermentino, Soave, Chablis, Viognier, Grüner Veltliner, Muscadet, White Burgundy → White
+- Rosé, Rosato, Rosado → Rosé
+- Prosecco, Champagne, Cava, Crémant, Pétillant, Pét-Nat, Sekt, Espumante → Sparkling
+- Port, Porto, Sherry, Madeira, Marsala, Vin Santo, Sauternes, Banyuls, Late Harvest, Ice Wine → Dessert / Fortified
+- Skin contact, Amber, Orange wine → Orange
 
 Naming rules (follow these exactly):
 - Branded/bottled products: Title Case, brand name first — e.g. "Woodenville Bourbon", "Amaro Averna", "Aviation Gin", "Malfy Arancia", "Luxardo Bitter Liqueur", "Grapefruit Bitters (Fee Brothers)", "Noilly Prat Vermouth"
@@ -1836,7 +1846,7 @@ async function processInvoiceFile(file) {
     if (wineItems.length > 0) {
       document.getElementById("invoice-processing-msg").textContent = `Looking up ${wineItems.length} wine${wineItems.length > 1 ? 's' : ''}…`;
       try {
-        parsed._wineDetails = await enrichWineDetails(wineItems.map(w => w.name));
+        parsed._wineDetails = await enrichWineDetails(wineItems.map(w => ({ name: w.name, wineVarietal: w.wineVarietal || '', wineStyle: w.wineStyle || '' })));
       } catch(e) { console.warn('Wine enrichment failed:', e); }
     }
 
@@ -1849,24 +1859,29 @@ async function processInvoiceFile(file) {
 
 let _wineDetails = {};
 
-async function enrichWineDetails(wineNames) {
-  const prompt = `Search the web for each of these wines and return a JSON array with one object per wine.
-Return ONLY a JSON array, no markdown, no explanation.
+async function enrichWineDetails(wineItems) {
+  const prompt = `You are a sommelier and wine researcher. Search the web for each of these wines and fill in complete details.
 
 Wines to look up:
-${wineNames.map((n,i) => `${i+1}. ${n}`).join('\n')}
+${wineItems.map((w,i) => `${i+1}. "${w.name}"${w.wineVarietal ? ` (known varietal hint: ${w.wineVarietal})` : ''}${w.wineStyle ? ` (known style hint: ${w.wineStyle})` : ''}`).join('\n')}
 
-For each wine return:
+For EACH wine, search for it by name and winery. Return ONLY a JSON array — no markdown, no explanation.
+
+Each object must have ALL of these fields:
 {
   "name": "<exact name as given above>",
-  "varietal": "<grape varietal(s), e.g. Primitivo, Pinot Noir, Chardonnay>",
-  "style": "<one of: White, Orange, Rosé, Red, Sparkling, Dessert / Fortified>",
-  "producer": "<winery or producer name only>",
-  "bottling": "<specific wine name / cuvée, or N/A if the producer name is the full name>",
-  "region": "<for US wines: state only, e.g. Oregon. For European wines: country and region, e.g. Italy, Puglia>"
+  "varietal": "<full grape varietal name, e.g. Cabernet Sauvignon, Pinot Noir, Chardonnay — expand abbreviations like Cab→Cabernet Sauvignon, PN→Pinot Noir, SB→Sauvignon Blanc>",
+  "style": "<one of exactly: Red, White, Rosé, Orange, Sparkling, Dessert / Fortified — derive from varietal if needed>",
+  "producer": "<winery name only, e.g. Métier, Dujac, Produttori del Barbaresco>",
+  "bottling": "<specific cuvée or wine name beyond the producer, or N/A>",
+  "region": "<for US: state only, e.g. Washington, Oregon, California. For Europe: Country, Region, e.g. Italy, Piedmont or France, Burgundy>"
 }
 
-If you cannot find reliable info for a field, use empty string "".`;
+Rules:
+- Search actively — do not leave fields blank if the info is findable
+- style must NEVER be empty: if varietal is known, derive style (Cab/Merlot/Pinot Noir/Syrah/etc → Red; Chard/SB/Riesling/PG/etc → White; Prosecco/Champagne → Sparkling; Port/Sherry/Madeira → Dessert / Fortified)
+- region must NEVER be empty if it's a real wine — search for the winery's location
+- Use the hints provided only as a starting point — verify and correct them via search`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -1878,19 +1893,17 @@ If you cannot find reliable info for a field, use empty string "".`;
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{ role: "user", content: prompt }],
     }),
   });
   if (!resp.ok) throw new Error(`Wine lookup API error ${resp.status}`);
   const data = await resp.json();
-  // Find the final text block (after any tool_use blocks)
   const textBlock = data.content.filter(b => b.type === 'text').pop();
   if (!textBlock) return {};
   const arr = JSON.parse(textBlock.text.trim().replace(/^```json\n?|```$/g, '').trim());
-  // Index by name for fast lookup
   const map = {};
   arr.forEach(w => { if (w.name) map[w.name] = w; });
   return map;

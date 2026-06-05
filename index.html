@@ -1806,9 +1806,9 @@ Sparkling (wineStyle: Sparkling): Prosecco, Champagne, Cava, Crémant, Pétillan
 
 Dessert / Fortified (wineStyle: Dessert / Fortified): Port, Porto, Sherry, Madeira, Marsala, Vin Santo, Sauternes, Banyuls, Late Harvest, Ice Wine, Passito
 
-Orange (wineStyle: Orange): Skin contact, Amber, Orange wine
+Orange (wineStyle: Orange): only when the name or label explicitly says "skin contact", "amber", "orange wine", "macerato", or similar winemaking descriptor — NOT inferred from grape variety alone. White grapes (Falanghina, Trebbiano, Pinot Grigio, Gewürztraminer, etc.) can be made as either White or Orange style; leave wineStyle blank if you cannot tell from the name.
 
-IMPORTANT: If the varietal or wine type word appears anywhere in the name, always set wineVarietal and wineStyle — do not leave them blank.
+IMPORTANT: Set wineVarietal whenever the grape is identifiable from the name. Set wineStyle only when it can be clearly determined — Red/Sparkling/Dessert from grape or wine type name, Rosé from explicit label, Orange only from explicit winemaking descriptor, White from grape only when no skin-contact cues are present.
 
 Naming rules (follow these exactly):
 - Branded/bottled products: Title Case, brand name first — e.g. "Woodenville Bourbon", "Amaro Averna", "Aviation Gin", "Malfy Arancia", "Luxardo Bitter Liqueur", "Grapefruit Bitters (Fee Brothers)", "Noilly Prat Vermouth"

@@ -726,10 +726,10 @@
       <h2>Confirm Duplicates</h2>
       <button class="modal-close" onclick="document.getElementById('dedup-modal').style.display='none'">×</button>
     </div>
-    <p style="font-size:13px;color:var(--text-lt);margin-bottom:16px;">Sonnet identified these likely duplicates. Uncheck any you want to keep separate, then confirm.</p>
+    <p style="font-size:13px;color:var(--text-lt);margin-bottom:16px;">Sonnet identified these likely duplicates. Checked items will be merged — uncheck any you want to keep as separate entries.</p>
     <div id="dedup-modal-list" style="max-height:380px;overflow-y:auto;"></div>
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-primary" onclick="confirmSmartDedup()">Remove Checked</button>
+      <button class="btn btn-primary" onclick="confirmSmartDedup()">Merge Checked</button>
       <button class="btn btn-outline" onclick="document.getElementById('dedup-modal').style.display='none'">Cancel</button>
     </div>
   </div>

@@ -2101,6 +2101,7 @@ Rules:
   const map = {};
   arr.forEach(w => { if (w.name) map[w.name] = w; });
   return map;
+  // Note: lookup uses fuzzy match in importParsedItems to handle name variations
 }
 
 let _invoiceDate = null;
@@ -2140,7 +2141,15 @@ function importParsedItems(parsed) {
     if (type === 'wine') {
       const bottleCount     = (unit === 'each' || unit === 'case') ? qty : 1;
       const wholesale       = bottleCount > 0 ? parseFloat((price / bottleCount).toFixed(2)) : price;
-      const wineDetail      = details[name] || {};
+      // Fuzzy match: exact first, then case-insensitive, then partial overlap
+      const wineDetail = details[name]
+        || Object.values(details).find(d => d.name?.toLowerCase() === name.toLowerCase())
+        || Object.values(details).find(d => {
+             const a = name.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+             const b = (d.name||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+             return a.includes(b.slice(0,12)) || b.includes(a.slice(0,12));
+           })
+        || {};
       const vintage4        = name.match(/\b(19|20)\d{2}\b/);
       const vintage2        = name.match(/\b(\d{2})\b(?!.*\d{2})/); // trailing 2-digit year
       const vintageFromName = vintage4 ? vintage4[0] : (vintage2 ? '20' + vintage2[1] : '');

@@ -575,24 +575,27 @@
     </div>
 
     <div class="card" style="margin-top:24px;">
-      <div class="card-header">
+      <div class="card-header" onclick="toggleInvHistory()" style="cursor:pointer;user-select:none;">
         <h2>Import History (<span id="inv-hist-count">0</span>)</h2>
+        <span id="inv-hist-chevron" style="font-size:18px;color:var(--text-lt);">▶</span>
       </div>
-      <div class="table-wrap">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Filename</th>
-              <th>Vendor</th>
-              <th style="text-align:center;">Items</th>
-              <th style="text-align:center;">Added</th>
-              <th style="text-align:center;">Updated</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="inv-hist-body"></tbody>
-        </table>
+      <div id="inv-hist-body-wrap" style="display:none;">
+        <div class="table-wrap">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Filename</th>
+                <th>Vendor</th>
+                <th style="text-align:center;">Items</th>
+                <th style="text-align:center;">Added</th>
+                <th style="text-align:center;">Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="inv-hist-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>
@@ -1939,6 +1942,14 @@ async function rescanInvoice(historyId) {
     document.getElementById('invoice-error-msg').textContent = e.message;
     invShow('invoice-error');
   }
+}
+
+function toggleInvHistory() {
+  const wrap = document.getElementById('inv-hist-body-wrap');
+  const chevron = document.getElementById('inv-hist-chevron');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? '' : 'none';
+  chevron.textContent = open ? '▼' : '▶';
 }
 
 function invShow(id) {

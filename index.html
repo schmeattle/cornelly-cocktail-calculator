@@ -321,6 +321,7 @@
     <button id="nav-ingredients" onclick="showPage('ingredients')">Ingredients</button>
     <button id="nav-inhouse" onclick="showPage('inhouse')">In-House</button>
     <button id="nav-inventory" onclick="showPage('inventory')">Recipe Inventory</button>
+    <button id="nav-wine" onclick="showPage('wine')">Wine</button>
   </nav>
 </header>
 
@@ -503,6 +504,49 @@
     </div>
   </section>
 
+  <!-- ── WINE PAGE ── -->
+  <section id="page-wine" class="page">
+    <div class="page-title">Wine List</div>
+    <div class="page-sub">Full bottle pricing with suggested and actual menu prices. Wholesale markup applied automatically.</div>
+
+    <div class="card">
+      <div class="card-header" style="flex-wrap:wrap;gap:10px;">
+        <h2>Wines (<span id="wine-count">0</span>)</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="wine-f-style" onchange="renderWine()" style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 10px;font-size:12px;outline:none;background:#fff;">
+            <option value="">All Styles</option>
+            <option>White</option><option>Orange</option><option>Rosé</option>
+            <option>Red</option><option>Sparkling</option><option>Dessert / Fortified</option>
+          </select>
+          <input type="text" id="wine-f-search" placeholder="Search varietal, producer…" oninput="renderWine()"
+            style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 11px;font-size:12px;outline:none;width:200px;" />
+          <button class="btn btn-primary btn-sm" onclick="openWineModal()">+ Add Wine</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="wine-table">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="setWineSort('varietal')">Varietal</th>
+              <th class="sortable" onclick="setWineSort('style')">Style</th>
+              <th class="sortable" onclick="setWineSort('producer')">Producer</th>
+              <th>Bottling</th>
+              <th class="sortable" onclick="setWineSort('region')">Region</th>
+              <th class="sortable" onclick="setWineSort('vintage')">Vintage</th>
+              <th class="sortable" onclick="setWineSort('wholesale')" style="text-align:right;">Wholesale</th>
+              <th style="text-align:right;">Sugg. Bottle</th>
+              <th style="text-align:right;">Menu Price</th>
+              <th style="text-align:right;">COGS %</th>
+              <th style="text-align:right;">6 oz Glass</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="wine-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- Ingredient Modal (Add/Edit) -->
@@ -572,6 +616,72 @@
   </div>
 </div>
 
+<!-- Wine Modal (Add/Edit) -->
+<div class="modal-overlay" id="wine-modal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2 id="wine-modal-title">Add Wine</h2>
+      <button class="modal-close" onclick="closeWineModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Varietal</label>
+        <input type="text" id="wm-varietal" placeholder="e.g. Pinot Noir" />
+      </div>
+      <div class="field">
+        <label>Style</label>
+        <select id="wm-style">
+          <option value="">— Select —</option>
+          <option>White</option><option>Orange</option><option>Rosé</option>
+          <option>Red</option><option>Sparkling</option><option>Dessert / Fortified</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Producer</label>
+        <input type="text" id="wm-producer" placeholder="e.g. Domaine Dujac" />
+      </div>
+      <div class="field">
+        <label>Bottling</label>
+        <input type="text" id="wm-bottling" placeholder="Wine name, or N/A" />
+      </div>
+      <div class="field full">
+        <label>Region</label>
+        <input type="text" id="wm-region" placeholder="e.g. Oregon  or  Italy, Piedmont" />
+      </div>
+      <div class="field">
+        <label>Vintage</label>
+        <input type="text" id="wm-vintage" placeholder="e.g. 2021 or NV" />
+      </div>
+      <div class="field">
+        <label>Wholesale Price ($)</label>
+        <input type="number" id="wm-wholesale" min="0" step="0.01" placeholder="0.00" oninput="wineCalcPreview()" />
+      </div>
+      <div class="field">
+        <label>Suggested Bottle Price</label>
+        <div id="wm-sugg-bottle" style="padding:9px 0;font-size:14px;font-weight:700;color:var(--navy);">—</div>
+      </div>
+      <div class="field">
+        <label>Real Menu Price ($) <span style="font-weight:400;color:var(--text-lt);">optional</span></label>
+        <input type="number" id="wm-menu-price" min="0" step="0.01" placeholder="0.00" oninput="wineCalcPreview()" />
+      </div>
+      <div class="field">
+        <label>COGS % vs Suggested</label>
+        <div id="wm-cogs-diff" style="padding:9px 0;font-size:14px;font-weight:700;">—</div>
+      </div>
+      <div class="field full">
+        <label>Suggested 6 oz Glass Price</label>
+        <div id="wm-sugg-glass" style="padding:9px 0;font-size:14px;font-weight:700;color:var(--navy);">—</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveWine()">Save</button>
+      <button class="btn btn-outline" onclick="closeWineModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="wine-m-delete" onclick="deleteWine()" style="display:none;margin-left:auto;">Delete</button>
+    </div>
+    <input type="hidden" id="wm-id" value="" />
+  </div>
+</div>
+
 <!-- (Recipe detail is now inline in inventory page) -->
 
 <div id="toast"></div>
@@ -605,6 +715,8 @@ async function initFirebase() {
     if (!recs.empty)  __cache.recipes     = recs.docs.map(d => ({id:d.id,...d.data()}));
     else              await seedRecipes();
     __cache.inhouse = ihs.docs.map(d => ({id:d.id,...d.data()}));
+    const wines = await __db.collection('wine_list').get();
+    __cache.wines = wines.docs.map(d => ({id:d.id,...d.data()}));
   } catch(e) { console.error('Firebase init:', e); }
 }
 
@@ -837,16 +949,23 @@ async function checkGate() {
 // ═══════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════
-function showPage(name) {
+function showPage(name, pushHash=true) {
+  const valid = ['builder','ingredients','inhouse','inventory','wine'];
+  if (!valid.includes(name)) name = 'builder';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
+  if (pushHash && location.hash !== '#' + name) history.pushState(null, '', '#' + name);
   if (name === 'ingredients') renderIngredients();
   if (name === 'inhouse')     { renderInhouse(); populateIhTypeDropdown(); }
   if (name === 'builder')     { ensureDatalist(); updateRecipeCost(); }
   if (name === 'inventory')   renderInventory();
+  if (name === 'wine')        renderWine();
 }
+window.addEventListener('hashchange', () => {
+  showPage(location.hash.replace('#','') || 'builder', false);
+});
 
 // ═══════════════════════════════════════════════════
 // TOAST
@@ -1525,16 +1644,197 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ═══════════════════════════════════════════════════
+// WINE
+// ═══════════════════════════════════════════════════
+__cache.wines = [];
+
+function wineMarkup(wholesale) {
+  if (wholesale <= 20)   return 3.1;
+  if (wholesale <= 30)   return 2.8;
+  if (wholesale <= 40)   return 2.2;
+  return 2.0;
+}
+function wineSuggBottle(wholesale) {
+  return Math.round(wholesale * wineMarkup(wholesale) * 100) / 100;
+}
+function wineSuggGlass(suggBottle) {
+  // 750ml ≈ 4.2 six-oz pours; divide by 4 then round up to nearest $0.50
+  const raw = suggBottle / 4;
+  return Math.ceil(raw * 2) / 2;
+}
+function wineCogsPct(wholesale, menuPrice) {
+  if (!menuPrice || menuPrice <= 0) return null;
+  return wholesale / menuPrice;
+}
+
+function wineCalcPreview() {
+  const w = parseFloat(document.getElementById('wm-wholesale').value) || 0;
+  const m = parseFloat(document.getElementById('wm-menu-price').value) || 0;
+  const sugg = w > 0 ? wineSuggBottle(w) : null;
+  const glass = sugg ? wineSuggGlass(sugg) : null;
+  document.getElementById('wm-sugg-bottle').textContent = sugg ? '$' + sugg.toFixed(2) : '—';
+  document.getElementById('wm-sugg-glass').textContent  = glass ? '$' + glass.toFixed(2) : '—';
+  const cogsDiffEl = document.getElementById('wm-cogs-diff');
+  if (sugg && m > 0) {
+    const suggCogs = wholesale => wholesale / wineSuggBottle(wholesale);
+    const realCogs = w / m;
+    const diff = realCogs - suggCogs(w);
+    const pct = (realCogs * 100).toFixed(1) + '%';
+    const diffStr = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(1) + '%';
+    cogsDiffEl.textContent = pct + ' (' + diffStr + ' vs target)';
+    cogsDiffEl.style.color = diff > 0.02 ? 'var(--red)' : diff < -0.02 ? 'var(--green)' : 'var(--text)';
+  } else {
+    cogsDiffEl.textContent = '—';
+    cogsDiffEl.style.color = 'var(--text)';
+  }
+}
+
+let __wineSortCol = 'style', __wineSortAsc = true;
+function setWineSort(col) {
+  if (__wineSortCol === col) __wineSortAsc = !__wineSortAsc;
+  else { __wineSortCol = col; __wineSortAsc = true; }
+  renderWine();
+}
+
+function renderWine() {
+  const styleFilter  = document.getElementById('wine-f-style').value.toLowerCase();
+  const search       = (document.getElementById('wine-f-search').value || '').toLowerCase();
+  let wines = __cache.wines.filter(w => {
+    if (styleFilter && w.style.toLowerCase() !== styleFilter) return false;
+    if (search && !['varietal','style','producer','bottling','region','vintage'].some(k => (w[k]||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+  const col = __wineSortCol, asc = __wineSortAsc;
+  wines.sort((a,b) => {
+    let av = a[col] ?? '', bv = b[col] ?? '';
+    if (col === 'wholesale') { av = parseFloat(av)||0; bv = parseFloat(bv)||0; }
+    else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
+    return av < bv ? (asc?-1:1) : av > bv ? (asc?1:-1) : 0;
+  });
+  document.getElementById('wine-count').textContent = __cache.wines.length;
+  const tbody = document.getElementById('wine-body');
+  if (!wines.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-lt);">No wines yet. Click + Add Wine to get started.</td></tr>';
+    return;
+  }
+  const STYLE_BADGE = {
+    'White':'#e8f4e8','Orange':'#fff3e0','Rosé':'#fce4ec','Red':'#ffebee',
+    'Sparkling':'#e8eaf6','Dessert / Fortified':'#f3e5f5'
+  };
+  const STYLE_COLOR = {
+    'White':'#2e7d32','Orange':'#e65100','Rosé':'#c2185b','Red':'#b71c1c',
+    'Sparkling':'#283593','Dessert / Fortified':'#6a1b9a'
+  };
+  tbody.innerHTML = wines.map(w => {
+    const sugg  = w.wholesale > 0 ? wineSuggBottle(w.wholesale) : null;
+    const glass = sugg ? wineSuggGlass(sugg) : null;
+    const menu  = parseFloat(w.menuPrice) || null;
+    let cogsCell = '—';
+    if (sugg && menu) {
+      const realCogs = w.wholesale / menu;
+      const suggCogs = w.wholesale / sugg;
+      const diff = realCogs - suggCogs;
+      const color = diff > 0.02 ? 'var(--red)' : diff < -0.02 ? 'var(--green)' : 'var(--text)';
+      cogsCell = `<span style="color:${color};font-weight:600;">${(realCogs*100).toFixed(1)}%</span>`;
+    }
+    const badgeBg  = STYLE_BADGE[w.style]  || '#eee';
+    const badgeClr = STYLE_COLOR[w.style] || '#333';
+    return `<tr>
+      <td>${esc(w.varietal||'')}</td>
+      <td><span style="background:${badgeBg};color:${badgeClr};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${esc(w.style||'')}</span></td>
+      <td>${esc(w.producer||'')}</td>
+      <td style="color:var(--text-lt);font-style:italic;">${esc(w.bottling && w.bottling.toLowerCase()!=='n/a' ? w.bottling : '')}</td>
+      <td>${esc(w.region||'')}</td>
+      <td>${esc(w.vintage||'')}</td>
+      <td style="text-align:right;">$${parseFloat(w.wholesale||0).toFixed(2)}</td>
+      <td style="text-align:right;font-weight:600;">${sugg ? '$'+sugg.toFixed(2) : '—'}</td>
+      <td style="text-align:right;">${menu ? '$'+menu.toFixed(2) : '<span style="color:var(--text-lt);">—</span>'}</td>
+      <td style="text-align:right;">${cogsCell}</td>
+      <td style="text-align:right;">${glass ? '$'+glass.toFixed(2) : '—'}</td>
+      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="openWineModal('${w.id}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openWineModal(id) {
+  const w = id ? __cache.wines.find(x => x.id === id) : null;
+  document.getElementById('wine-modal-title').textContent = w ? 'Edit Wine' : 'Add Wine';
+  document.getElementById('wm-id').value          = w ? w.id : '';
+  document.getElementById('wm-varietal').value    = w ? (w.varietal||'') : '';
+  document.getElementById('wm-style').value       = w ? (w.style||'') : '';
+  document.getElementById('wm-producer').value    = w ? (w.producer||'') : '';
+  document.getElementById('wm-bottling').value    = w ? (w.bottling||'') : '';
+  document.getElementById('wm-region').value      = w ? (w.region||'') : '';
+  document.getElementById('wm-vintage').value     = w ? (w.vintage||'') : '';
+  document.getElementById('wm-wholesale').value   = w ? (w.wholesale||'') : '';
+  document.getElementById('wm-menu-price').value  = w ? (w.menuPrice||'') : '';
+  document.getElementById('wine-m-delete').style.display = w ? 'inline-flex' : 'none';
+  wineCalcPreview();
+  document.getElementById('wine-modal').style.display = 'flex';
+}
+function closeWineModal() {
+  document.getElementById('wine-modal').style.display = 'none';
+}
+
+function saveWine() {
+  const id        = document.getElementById('wm-id').value;
+  const varietal  = document.getElementById('wm-varietal').value.trim();
+  const style     = document.getElementById('wm-style').value;
+  const producer  = document.getElementById('wm-producer').value.trim();
+  const wholesale = parseFloat(document.getElementById('wm-wholesale').value);
+  if (!varietal)           { showToast('Please enter a varietal.', 'error'); return; }
+  if (!style)              { showToast('Please select a style.', 'error'); return; }
+  if (!producer)           { showToast('Please enter a producer.', 'error'); return; }
+  if (!wholesale || wholesale <= 0) { showToast('Please enter a valid wholesale price.', 'error'); return; }
+  const wine = {
+    id:         id || String(Date.now()),
+    varietal,
+    style,
+    producer,
+    bottling:   document.getElementById('wm-bottling').value.trim() || 'N/A',
+    region:     document.getElementById('wm-region').value.trim(),
+    vintage:    document.getElementById('wm-vintage').value.trim(),
+    wholesale,
+    menuPrice:  parseFloat(document.getElementById('wm-menu-price').value) || null,
+  };
+  if (id) {
+    const idx = __cache.wines.findIndex(x => x.id === id);
+    if (idx >= 0) __cache.wines[idx] = wine; else __cache.wines.push(wine);
+  } else {
+    __cache.wines.push(wine);
+  }
+  __db.collection('wine_list').doc(wine.id).set(wine).catch(e => console.error(e));
+  closeWineModal();
+  renderWine();
+  showToast(id ? 'Wine updated.' : 'Wine added.');
+}
+
+function deleteWine() {
+  const id = document.getElementById('wm-id').value;
+  if (!id) return;
+  __cache.wines = __cache.wines.filter(x => x.id !== id);
+  __db.collection('wine_list').doc(id).delete().catch(e => console.error(e));
+  closeWineModal();
+  renderWine();
+  showToast('Wine deleted.');
+}
+
+// ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
 (async function() {
   await initFirebase();
   renderIngredients();
-  // Pre-populate one row in builders
   addIhRow();
   addRecRow();
   ensureDatalist();
+  const initialPage = location.hash.replace('#','') || 'builder';
+  showPage(initialPage, false);
+  document.getElementById('wine-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeWineModal();
+  });
 })();
 </script>
 </body>
 </html>
+

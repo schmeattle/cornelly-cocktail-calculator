@@ -2060,8 +2060,8 @@ Each object must have ALL of these fields:
   "name": "<exact name as given above>",
   "varietal": "<full grape varietal name, e.g. Cabernet Sauvignon, Pinot Noir, Chardonnay — expand abbreviations like Cab→Cabernet Sauvignon, PN→Pinot Noir, SB→Sauvignon Blanc>",
   "style": "<one of exactly: Red, White, Rosé, Orange, Sparkling, Dessert / Fortified — derive from varietal if needed>",
-  "producer": "<winery name only, e.g. Métier, Dujac, Produttori del Barbaresco>",
-  "bottling": "<specific cuvée or wine name beyond the producer, or N/A>",
+  "producer": "<winery/estate name ONLY — never include the appellation, DOCG, grape variety, or cuvée name here>",
+  "bottling": "<the specific wine name, cuvée, or vineyard designation beyond the producer name — e.g. 'Barolo del Comune di Verduno', 'Basarin', 'Côte Blonde', 'Two Blondes', 'Solco', or N/A if none>",
   "region": "<for US: state + AVA if the wine has a known AVA, e.g. Washington, Yakima Valley or Oregon, Willamette Valley or California, Santa Cruz Mountains or California, Napa Valley. For Europe: Country, Region, e.g. Italy, Piedmont or France, Burgundy or Spain, Catalonia>"
 }
 
@@ -2074,6 +2074,7 @@ Rules:
 - For Rosé, style is always Rosé
 - For white grapes (Chardonnay, Sauvignon Blanc, Falanghina, Trebbiano, Pinot Grigio, Gewürztraminer, Riesling, etc.) DO NOT assume White — look up the specific wine/producer to determine if it is made as a conventional White or as an Orange (skin-contact) wine. Orange wines are increasingly common and made from white grapes; you must verify via search.
 - region must NEVER be empty if it's a real wine — search for the winery's location
+- producer/bottling split examples: "Fratelli Alessandria Barolo del Comune di Verduno" → producer: "Fratelli Alessandria", bottling: "Barolo del Comune di Verduno". "Moccagatta Barbaresco Basarin" → producer: "Moccagatta", bottling: "Basarin". "Paltrinieri Solco Lambrusco" → producer: "Paltrinieri", bottling: "Solco". "Andrew Will Two Blondes Sauvignon Blanc" → producer: "Andrew Will", bottling: "Two Blondes". NEVER put the full invoice string into the producer field.
 - Use the hints provided only as a starting point — verify and correct them via search`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {

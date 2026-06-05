@@ -1139,9 +1139,9 @@ function renderIngredients() {
     const dir = _ingSort.dir === 'asc' ? 1 : -1;
     switch (_ingSort.col) {
       case 'name':  return (a.name||'').localeCompare(b.name||'') * dir;
-      case 'type':  return (a.type.localeCompare(b.type) || a.name.localeCompare(b.name)) * dir;
-      case 'qty':   return (a.qty - b.qty) * dir;
-      case 'price': return (a.price - b.price) * dir;
+      case 'type':  return ((a.type||'').localeCompare(b.type||'') || (a.name||'').localeCompare(b.name||'')) * dir;
+      case 'qty':   return ((a.qty||0) - (b.qty||0)) * dir;
+      case 'price': return ((a.price||0) - (b.price||0)) * dir;
       case 'peroz': {
         const av = toMl(1, a.unit) !== null ? costPerRecipeUnit(a, 'oz') : 0;
         const bv = toMl(1, b.unit) !== null ? costPerRecipeUnit(b, 'oz') : 0;

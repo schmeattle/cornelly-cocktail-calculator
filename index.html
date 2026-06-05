@@ -1744,6 +1744,7 @@ Return ONLY a JSON object (no markdown, no explanation) in this exact format:
       "purchaseQty": <number - the volume or count in the purchase unit>,
       "purchaseUnit": "one of: ml, l, oz, gal, each, case",
       "purchaseCost": <number - total line item cost in dollars, NOT unit price>,
+      "wineVintage": "for wine items only — 4-digit year if present; also expand 2-digit suffixes (e.g. '24' → '2024', 'Otto 24' → '2024'); use 'NV' for non-vintage wines (Cava, Prosecco, Champagne, Sherry, Madeira, etc.) or when NV is stated; empty string for non-wine items",
       "notes": "any uncertainty about unit, price, or product details, or empty string"
     }
   ]
@@ -2010,8 +2011,10 @@ function importParsedItems(parsed) {
       const bottleCount     = (unit === 'each' || unit === 'case') ? qty : 1;
       const wholesale       = bottleCount > 0 ? parseFloat((price / bottleCount).toFixed(2)) : price;
       const wineDetail      = details[name] || {};
-      const vintageMatch    = name.match(/\b(19|20)\d{2}\b/);
-      const vintage         = vintageMatch ? vintageMatch[0] : (wineDetail.vintage || '');
+      const vintage4        = name.match(/\b(19|20)\d{2}\b/);
+      const vintage2        = name.match(/\b(\d{2})\b(?!.*\d{2})/); // trailing 2-digit year
+      const vintageFromName = vintage4 ? vintage4[0] : (vintage2 ? '20' + vintage2[1] : '');
+      const vintage         = wineDetail.vintage || item.wineVintage || vintageFromName;
       const nameSansVintage = name.replace(/\b(19|20)\d{2}\b/, '').trim().replace(/\s+/g, ' ');
       const alreadyInList   = __cache.wines.some(w => {
         const full = (w.producer + ' ' + (w.bottling !== 'N/A' ? w.bottling : '')).trim().toLowerCase();

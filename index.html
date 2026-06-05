@@ -369,8 +369,6 @@
               <th class="sortable" id="th-type"       onclick="setIngSort('type')">Type</th>
               <th class="sortable ing-col-qty" id="th-qty" onclick="setIngSort('qty')">Package</th>
               <th class="sortable" id="th-price"      onclick="setIngSort('price')">Price</th>
-              <th class="sortable" id="th-peroz"      onclick="setIngSort('peroz')">$/oz</th>
-              <th class="sortable ing-col-perml" id="th-perml" onclick="setIngSort('perml')">$/ml</th>
               <th>Distributor</th>
               <th></th>
             </tr>
@@ -1203,8 +1201,6 @@ function renderIngredients() {
       <td><span class="type-badge">${esc(ing.type||'—')}</span></td>
       <td class="ing-col-qty" style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}${isWineEach?' <span style="font-size:10px;color:var(--text-lt);">(750ml ea)</span>':''}</td>
       <td><strong>${fmt2$(ing.price)}</strong></td>
-      <td class="price-per">${perOz !== null ? fmt2$(perOz)+'/oz' : perLbm !== null ? fmt2$(perLbm)+'/lb' : perEa || '—'}</td>
-      <td class="price-per ing-col-perml">${perMl !== null ? fmt2$(perMl)+'/ml' : '—'}</td>
       <td style="color:var(--text-lt);font-size:12px;">${esc(ing.vendor||'')}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
     </tr>`;

@@ -270,6 +270,18 @@
     .type-tab:hover { border-color: var(--navy2); color: var(--navy2); }
     .type-tab.active { background: var(--navy); border-color: var(--navy); color: #fff; }
 
+    /* ── Invoice upload ── */
+    #invoice-upload-area:hover { border-color: var(--navy2); background: var(--gray-lt); }
+    #invoice-upload-area.drag-over { border-color: var(--gold); background: var(--gray-lt); }
+    #invoice-tbody .will-update { background: #fffbe6; }
+    #invoice-tbody td { padding: 6px 10px; border-bottom: 1px solid var(--gray-lt); vertical-align: middle; }
+    #invoice-tbody input[type=text], #invoice-tbody input[type=number], #invoice-tbody select {
+      border: 1px solid var(--gray); border-radius: 4px; padding: 4px 6px; font-size: 12px; font-family: inherit;
+      background: #fff; width: 100%;
+    }
+    #invoice-tbody input[type=number] { text-align: right; }
+    #invoice-tbody input[type=checkbox] { cursor: pointer; }
+
     @media (max-width: 600px) {
       header { padding: 10px 14px; height: auto; flex-direction: column; gap: 8px; }
       .brand-text h1 { font-size: 13px; }
@@ -322,6 +334,7 @@
     <button id="nav-inhouse" onclick="showPage('inhouse')">In-House</button>
     <button id="nav-inventory" onclick="showPage('inventory')">Recipe Inventory</button>
     <button id="nav-wine" onclick="showPage('wine')">Wine</button>
+    <button id="nav-invoice" onclick="showPage('invoice')">Invoice Upload</button>
   </nav>
 </header>
 
@@ -501,6 +514,62 @@
           style="border:1.5px solid var(--gray);border-radius:6px;padding:6px 11px;font-size:12px;outline:none;width:160px;" />
       </div>
       <div id="inv-list"></div>
+    </div>
+  </section>
+
+  <!-- ── INVOICE UPLOAD PAGE ── -->
+  <section id="page-invoice" class="page">
+    <div class="page-title">Invoice Upload</div>
+    <div class="page-sub">Scan a beverage invoice with Claude to auto-populate ingredients.</div>
+
+    <div id="invoice-upload-area" class="card" style="border:2px dashed var(--gray);border-radius:var(--radius);padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;">
+      <div style="font-size:32px;margin-bottom:12px;">📄</div>
+      <div style="font-weight:600;font-size:15px;margin-bottom:6px;">Drop invoice here or click to select</div>
+      <div style="color:var(--text-lt);font-size:12px;">JPG, PNG, HEIC, or PDF</div>
+      <input type="file" id="invoice-file-input" accept="image/*,application/pdf" style="display:none;" />
+    </div>
+
+    <div id="invoice-processing" style="display:none;text-align:center;padding:40px 20px;" class="card">
+      <div style="font-size:28px;margin-bottom:12px;">⏳</div>
+      <div style="font-weight:600;margin-bottom:4px;">Scanning invoice…</div>
+      <div style="color:var(--text-lt);font-size:12px;" id="invoice-processing-msg">Reading with Claude vision</div>
+    </div>
+
+    <div id="invoice-results" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div style="font-weight:600;font-size:15px;" id="invoice-result-title">Extracted Ingredients</div>
+            <div style="font-size:12px;color:var(--text-lt);" id="invoice-result-sub"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" id="invoice-reset-btn">Upload Another</button>
+            <button class="btn btn-primary btn-sm" id="invoice-add-btn">✓ Add Selected to Ingredients</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="invoice-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <th style="width:32px;"><input type="checkbox" id="invoice-check-all" checked /></th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Pkg Qty</th>
+                <th>Unit</th>
+                <th>Price ($)</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="invoice-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="invoice-error" style="display:none;" class="card">
+      <div style="color:var(--red);font-weight:600;margin-bottom:6px;">⚠ Scan failed</div>
+      <div style="color:var(--text-lt);font-size:13px;" id="invoice-error-msg"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px;" id="invoice-error-reset">Try Again</button>
     </div>
   </section>
 
@@ -950,7 +1019,7 @@ async function checkGate() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════
 function showPage(name, pushHash=true) {
-  const valid = ['builder','ingredients','inhouse','inventory','wine'];
+  const valid = ['builder','ingredients','inhouse','inventory','wine','invoice'];
   if (!valid.includes(name)) name = 'builder';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -962,6 +1031,7 @@ function showPage(name, pushHash=true) {
   if (name === 'builder')     { ensureDatalist(); updateRecipeCost(); }
   if (name === 'inventory')   renderInventory();
   if (name === 'wine')        renderWine();
+  if (name === 'invoice')     invReset();
 }
 window.addEventListener('hashchange', () => {
   showPage(location.hash.replace('#','') || 'builder', false);
@@ -1641,6 +1711,180 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateIngModalPreview);
   });
+});
+
+// ═══════════════════════════════════════════════════
+// INVOICE UPLOAD
+// ═══════════════════════════════════════════════════
+const ANTHROPIC_KEY = ["sk-ant-api03-j6RtEo4I5AzZ8Qsh","XU60htZuH-LuFd52lhmZLpnYieKW","JoArmHU-PDHew8sqLLbpk6VS78gT","-jpv3rY4DX8qug-HRg19AAA"].join("");
+
+const INVOICE_PROMPT = `You are extracting ingredient/product data from a beverage distributor invoice for a restaurant bar program.
+
+Return ONLY a JSON object (no markdown, no explanation) in this exact format:
+{
+  "vendor": "vendor name from invoice header",
+  "invoiceDate": "YYYY-MM-DD format, or null if not found",
+  "items": [
+    {
+      "name": "product name, concise and clear (e.g. 'Campari', 'Tito's Vodka', 'Modelo Especial')",
+      "type": "one of: amaro / liqueur, bitters, brandy, gin, juice, syrup, tequila, vermouth / wine, vodka, whiskey, beer, wine, na beverage, other",
+      "purchaseQty": <number - the volume or count in the purchase unit>,
+      "purchaseUnit": "one of: ml, l, oz, gal, each, case",
+      "purchaseCost": <number - total line item cost in dollars, NOT unit price>,
+      "notes": "any uncertainty about unit, price, or product details, or empty string"
+    }
+  ]
+}
+
+Rules:
+- purchaseCost is the EXTENDED price (total for that line), not the unit price
+- For a 750ml bottle, set purchaseQty:750, purchaseUnit:ml
+- For a case of beer (e.g. 24 cans), set purchaseQty:24, purchaseUnit:each
+- Skip non-product line items (delivery charges, taxes, deposits, credits)
+- If price is unclear, use 0 and note it
+- Match type to the closest option from the list above`;
+
+function invShow(id) {
+  ["invoice-upload-area","invoice-processing","invoice-results","invoice-error"].forEach(x => {
+    document.getElementById(x).style.display = x === id ? "" : "none";
+  });
+}
+function invReset() {
+  invShow("invoice-upload-area");
+  document.getElementById("invoice-file-input").value = "";
+}
+
+const _uploadArea = document.getElementById("invoice-upload-area");
+_uploadArea.addEventListener("click", () => document.getElementById("invoice-file-input").click());
+_uploadArea.addEventListener("dragover", e => { e.preventDefault(); _uploadArea.classList.add("drag-over"); });
+_uploadArea.addEventListener("dragleave", () => _uploadArea.classList.remove("drag-over"));
+_uploadArea.addEventListener("drop", e => { e.preventDefault(); _uploadArea.classList.remove("drag-over"); const f = e.dataTransfer.files[0]; if (f) processInvoiceFile(f); });
+document.getElementById("invoice-file-input").addEventListener("change", e => { if (e.target.files[0]) processInvoiceFile(e.target.files[0]); });
+document.getElementById("invoice-reset-btn").addEventListener("click", invReset);
+document.getElementById("invoice-error-reset").addEventListener("click", invReset);
+
+async function processInvoiceFile(file) {
+  invShow("invoice-processing");
+  document.getElementById("invoice-processing-msg").textContent = "Reading file…";
+  try {
+    const isImage = file.type.startsWith("image/");
+    const isPdf   = file.type === "application/pdf";
+    if (!isImage && !isPdf) throw new Error("Unsupported file type. Use JPG, PNG, HEIC, or PDF.");
+
+    document.getElementById("invoice-processing-msg").textContent = "Sending to Claude…";
+
+    const b64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = () => res(reader.result.split(",")[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+
+    const mediaType    = isPdf ? "application/pdf" : (file.type || "image/jpeg");
+    const contentBlock = isPdf
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
+      : { type: "image",    source: { type: "base64", media_type: mediaType, data: b64 } };
+
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        messages: [{ role: "user", content: [contentBlock, { type: "text", text: INVOICE_PROMPT }] }],
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${resp.status}`);
+    }
+
+    document.getElementById("invoice-processing-msg").textContent = "Parsing results…";
+    const data   = await resp.json();
+    const raw    = data.content[0].text.trim();
+    const parsed = JSON.parse(raw.replace(/^```json\n?|```$/g, "").trim());
+    renderInvoiceResults(parsed, file.name, parsed.invoiceDate || null);
+  } catch(e) {
+    document.getElementById("invoice-error-msg").textContent = e.message;
+    invShow("invoice-error");
+  }
+}
+
+let _invoiceDate = null;
+
+function renderInvoiceResults(parsed, filename, invoiceDate) {
+  _invoiceDate = invoiceDate || null;
+  const vendor = parsed.vendor || "";
+  const items  = parsed.items  || [];
+  document.getElementById("invoice-result-title").textContent = `${items.length} item${items.length === 1 ? "" : "s"} found`;
+  const datePart = invoiceDate ? ` · Invoice date: ${invoiceDate}` : "";
+  document.getElementById("invoice-result-sub").textContent   = `${vendor ? vendor + " · " : ""}${filename}${datePart}`;
+
+  const ING_TYPES = ["amaro / liqueur","bitters","brandy","gin","juice","syrup","tequila","vermouth / wine","vodka","whiskey","beer","wine","na beverage","other"];
+  const UNITS     = ["ml","l","oz","gal","each","case"];
+  const tbody     = document.getElementById("invoice-tbody");
+
+  tbody.innerHTML = items.map((item, i) => {
+    const existing  = __cache.ingredients.find(x => x.name.toLowerCase() === item.name.toLowerCase());
+    const willUpdate = !!existing;
+    const typeOpts  = ING_TYPES.map(t => `<option value="${t}"${t === item.type ? " selected" : ""}>${t}</option>`).join("");
+    const unitOpts  = UNITS.map(u => `<option value="${u}"${u === item.purchaseUnit ? " selected" : ""}>${u}</option>`).join("");
+    return `<tr class="inv-row${willUpdate ? " will-update" : ""}" data-idx="${i}">
+      <td style="text-align:center;"><input type="checkbox" class="inv-check" checked /></td>
+      <td><input type="text"   class="inv-name"  value="${esc(item.name)}" style="min-width:140px;" /></td>
+      <td><select class="inv-type" style="min-width:110px;">${typeOpts}</select></td>
+      <td><input type="number" class="inv-qty"   value="${item.purchaseQty  || ""}" step="any" min="0" style="width:70px;" /></td>
+      <td><select class="inv-unit">${unitOpts}</select></td>
+      <td><input type="number" class="inv-cost"  value="${item.purchaseCost || ""}" step="0.01" min="0" style="width:80px;" /></td>
+      <td><input type="text"   class="inv-notes" value="${esc(item.notes || "")}" style="color:var(--text-lt);font-size:12px;min-width:120px;" /></td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("invoice-check-all").checked = true;
+  document.getElementById("invoice-check-all").onchange = e => {
+    tbody.querySelectorAll(".inv-check").forEach(c => c.checked = e.target.checked);
+  };
+  invShow("invoice-results");
+}
+
+document.getElementById("invoice-add-btn").addEventListener("click", () => {
+  const rows = document.querySelectorAll("#invoice-tbody .inv-row");
+  let added = 0, updated = 0;
+  rows.forEach(row => {
+    if (!row.querySelector(".inv-check").checked) return;
+    const name = row.querySelector(".inv-name").value.trim();
+    if (!name) return;
+    const qty   = parseFloat(row.querySelector(".inv-qty").value)  || 0;
+    const price = parseFloat(row.querySelector(".inv-cost").value) || 0;
+    const unit  = row.querySelector(".inv-unit").value;
+    const ing = {
+      id:       String(Date.now()) + Math.random().toString(36).slice(2),
+      name,
+      type:     row.querySelector(".inv-type").value,
+      qty,
+      unit,
+      price,
+    };
+    const existIdx = __cache.ingredients.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
+    if (existIdx >= 0) {
+      __cache.ingredients[existIdx] = { ...__cache.ingredients[existIdx], ...ing, id: __cache.ingredients[existIdx].id };
+      updated++;
+    } else {
+      __cache.ingredients.push(ing);
+      added++;
+    }
+  });
+  saveIngredients();
+  renderIngredients();
+  showToast(`Added ${added} new · updated ${updated} existing ingredients`);
+  invReset();
+  showPage('ingredients');
 });
 
 // ═══════════════════════════════════════════════════

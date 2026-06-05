@@ -808,8 +808,9 @@ const __fbConfig = {
   appId: "1:627263395752:web:20e24634ff4cef091daf9d"
 };
 const __app = firebase.initializeApp(__fbConfig, 'cocktail');
-const __db      = firebase.firestore(__app);
-const __storage = firebase.storage(__app);
+const __db  = firebase.firestore(__app);
+let __storage = null;
+try { __storage = firebase.storage(__app); } catch(e) { console.warn('Firebase Storage unavailable:', e); }
 
 const __cache = { ingredients: [], recipes: [], inhouse: [] };
 
@@ -1860,6 +1861,7 @@ Naming rules (follow these exactly):
 // INVOICE HISTORY
 // ═══════════════════════════════════════════════════
 async function saveInvoiceToStorage(file) {
+  if (!__storage) return null;
   try {
     const path = `invoices/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
     const ref  = __storage.ref(path);

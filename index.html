@@ -1937,7 +1937,12 @@ Each object must have ALL of these fields:
 
 Rules:
 - Search actively — do not leave fields blank if the info is findable
-- style must NEVER be empty: if varietal is known, derive style (Cab/Merlot/Pinot Noir/Syrah/etc → Red; Chard/SB/Riesling/PG/etc → White; Prosecco/Champagne → Sparkling; Port/Sherry/Madeira → Dessert / Fortified)
+- style must NEVER be empty for a real wine — always determine it via search
+- For red grapes (Cab, Pinot Noir, Syrah, etc.) style is always Red
+- For sparkling wine types (Prosecco, Champagne, Cava, etc.) style is always Sparkling
+- For fortified types (Port, Sherry, Madeira, etc.) style is always Dessert / Fortified
+- For Rosé, style is always Rosé
+- For white grapes (Chardonnay, Sauvignon Blanc, Falanghina, Trebbiano, Pinot Grigio, Gewürztraminer, Riesling, etc.) DO NOT assume White — look up the specific wine/producer to determine if it is made as a conventional White or as an Orange (skin-contact) wine. Orange wines are increasingly common and made from white grapes; you must verify via search.
 - region must NEVER be empty if it's a real wine — search for the winery's location
 - Use the hints provided only as a starting point — verify and correct them via search`;
 

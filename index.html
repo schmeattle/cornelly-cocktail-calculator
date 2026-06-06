@@ -53,6 +53,22 @@
     /* ── Layout ── */
     main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 80px; transition: max-width .2s; }
     main.wide { max-width: 1600px; }
+
+    /* Wine hover popover */
+    #wine-popover {
+      position: fixed; z-index: 9000; width: 280px;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(26,79,138,.22);
+      overflow: hidden; pointer-events: none;
+      opacity: 0; transition: opacity .15s;
+    }
+    #wine-popover.visible { opacity: 1; }
+    #wine-popover img { width: 100%; height: 180px; object-fit: contain; background: #f7f3ec; padding: 8px; }
+    #wine-popover .pop-body { padding: 12px 14px 14px; }
+    #wine-popover .pop-producer { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    #wine-popover .pop-bio { font-size: 12px; color: var(--text-lt); line-height: 1.5; }
+    #wine-popover .pop-loading { text-align:center; padding: 40px 0; color: var(--text-lt); font-size:12px; }
+    .wine-name-hover { cursor: default; border-bottom: 1px dotted var(--navy2); }
     .page { display: none; }
     .page.active { display: block; }
     .page-title { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
@@ -808,6 +824,9 @@
 
 <!-- (Recipe detail is now inline in inventory page) -->
 
+<div id="wine-popover">
+  <div id="wine-popover-inner"></div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -2575,7 +2594,7 @@ function renderWine() {
     return `<tr>
       <td>${esc(w.varietal||'')}</td>
       <td><span style="background:${badgeBg};color:${badgeClr};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${esc(w.style||'')}</span></td>
-      <td>${esc(w.producer||'')}</td>
+      <td><span class="wine-name-hover" onmouseenter="wineHoverShow(event,'${w.id}')" onmouseleave="wineHoverHide()">${esc(w.producer||'')}</span></td>
       <td style="color:var(--text-lt);font-style:italic;">${esc(w.bottling && w.bottling.toLowerCase()!=='n/a' ? w.bottling : '')}</td>
       <td>${esc(w.region||'')}</td>
       <td>${esc(w.vintage||'')}</td>
@@ -2686,6 +2705,108 @@ function deleteWine() {
 }
 
 // ═══════════════════════════════════════════════════
+// WINE HOVER POPOVER
+// ═══════════════════════════════════════════════════
+const _wineHoverCache = {};
+let _hoverTimer = null;
+let _hoverActive = false;
+
+function wineHoverShow(e, wineId) {
+  clearTimeout(_hoverTimer);
+  _hoverTimer = setTimeout(() => _wineHoverOpen(e, wineId), 450);
+}
+
+function wineHoverHide() {
+  clearTimeout(_hoverTimer);
+  _hoverTimer = setTimeout(() => {
+    const pop = document.getElementById('wine-popover');
+    pop.classList.remove('visible');
+    _hoverActive = false;
+  }, 200);
+}
+
+async function _wineHoverOpen(e, wineId) {
+  const wine = __cache.wines.find(w => w.id === wineId);
+  if (!wine) return;
+  _hoverActive = true;
+
+  const pop   = document.getElementById('wine-popover');
+  const inner = document.getElementById('wine-popover-inner');
+
+  // Position popover
+  const x = e.clientX + 16;
+  const y = e.clientY - 40;
+  pop.style.left = Math.min(x, window.innerWidth - 300) + 'px';
+  pop.style.top  = Math.max(8, Math.min(y, window.innerHeight - 420)) + 'px';
+  pop.classList.add('visible');
+
+  // Show loading state
+  if (!_wineHoverCache[wineId]) {
+    inner.innerHTML = `<div class="pop-loading">🔍 Looking up ${esc(wine.producer)}…</div>`;
+  }
+
+  // Serve from cache if available
+  if (_wineHoverCache[wineId]) {
+    _renderWinePopover(inner, _wineHoverCache[wineId], wine);
+    return;
+  }
+
+  // Fetch from Sonnet with web search
+  try {
+    const wineLabel = [wine.producer, wine.bottling !== 'N/A' ? wine.bottling : '', wine.vintage].filter(Boolean).join(' ');
+    const prompt = `Search the web for the wine producer "${wine.producer}" and the specific wine "${wineLabel}".
+Return ONLY a JSON object, no markdown:
+{
+  "imageUrl": "direct URL to a clear bottle image from the winery website, Wine.com, Vivino, or a wine retailer — must be a .jpg, .png, or .webp URL",
+  "producerBio": "2-3 sentence description of the producer/winery — who they are, where they're located, what they're known for",
+  "wineNote": "1 sentence about this specific wine or bottling"
+}
+If you cannot find a reliable bottle image URL, use empty string for imageUrl.`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'web-search-2025-03-05', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1024, tools: [{ type: 'web_search_20250305', name: 'web_search' }], messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const textBlock = data.content.filter(b => b.type === 'text').pop();
+    const result = JSON.parse(textBlock.text.trim().replace(/^```json\n?|```$/g,'').trim());
+    _wineHoverCache[wineId] = result;
+    // Also persist to Firestore so future page loads are instant
+    if (result.producerBio) {
+      __db.collection('wine_list').doc(wineId).update({ _popoverBio: result.producerBio, _popoverNote: result.wineNote || '', _popoverImg: result.imageUrl || '' }).catch(()=>{});
+    }
+    if (_hoverActive) _renderWinePopover(inner, result, wine);
+  } catch(e) {
+    if (_hoverActive) inner.innerHTML = `<div class="pop-body"><div class="pop-producer">${esc(wine.producer)}</div><div class="pop-bio" style="color:var(--red);">Could not load info.</div></div>`;
+  }
+}
+
+function _renderWinePopover(inner, data, wine) {
+  const img = data.imageUrl
+    ? `<img src="${data.imageUrl}" alt="${esc(wine.producer)}" onerror="this.style.display='none'" />`
+    : '';
+  const bio  = data.producerBio || '';
+  const note = data.wineNote    || '';
+  inner.innerHTML = `
+    ${img}
+    <div class="pop-body">
+      <div class="pop-producer">${esc(wine.producer)}</div>
+      ${bio  ? `<div class="pop-bio">${esc(bio)}</div>`  : ''}
+      ${note ? `<div class="pop-bio" style="margin-top:6px;font-style:italic;">${esc(note)}</div>` : ''}
+    </div>`;
+}
+
+// Pre-load cached popover data from Firestore into memory cache on init
+function loadWinePopoverCache() {
+  __cache.wines.forEach(w => {
+    if (w._popoverBio) {
+      _wineHoverCache[w.id] = { imageUrl: w._popoverImg || '', producerBio: w._popoverBio, wineNote: w._popoverNote || '' };
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
 (async function() {
@@ -2694,6 +2815,7 @@ function deleteWine() {
   addIhRow();
   addRecRow();
   ensureDatalist();
+  loadWinePopoverCache();
   const initialPage = location.hash.replace('#','') || 'builder';
   showPage(initialPage, false);
   renderInvoiceHistory();

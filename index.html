@@ -369,6 +369,7 @@
               <th class="sortable" id="th-type"       onclick="setIngSort('type')">Type</th>
               <th class="sortable ing-col-qty" id="th-qty" onclick="setIngSort('qty')">Package</th>
               <th class="sortable" id="th-price"      onclick="setIngSort('price')">Price</th>
+              <th class="sortable" id="th-perbottle"  onclick="setIngSort('perbottle')">Per Bottle</th>
               <th>Distributor</th>
               <th></th>
             </tr>
@@ -1133,6 +1134,18 @@ function setIngSort(col) {
   renderIngredients();
 }
 
+const DRY_UNITS = new Set(['lbm','ozm','g','kg']);
+const VOL_UNITS = new Set(['ml','l','oz','gal']);
+function ingPerBottle(ing) {
+  if (!ing.price || !ing.qty) return null;
+  // Multi-pack (case/each with qty>1): divide to get per-unit price
+  if (ing.unit === 'each' || ing.unit === 'case') return ing.price / ing.qty;
+  // Volume units: treat as single bottle/container, return price as-is
+  if (VOL_UNITS.has(ing.unit)) return ing.price;
+  // Dry/weight: not applicable
+  return null;
+}
+
 function renderIngredients() {
   const search = document.getElementById('ing-search')?.value?.toLowerCase() || '';
   const typeF = document.getElementById('ing-type-filter')?.value || '';
@@ -1155,7 +1168,8 @@ function renderIngredients() {
       case 'name':  return (a.name||'').localeCompare(b.name||'') * dir;
       case 'type':  return ((a.type||'').localeCompare(b.type||'') || (a.name||'').localeCompare(b.name||'')) * dir;
       case 'qty':   return ((a.qty||0) - (b.qty||0)) * dir;
-      case 'price': return ((a.price||0) - (b.price||0)) * dir;
+      case 'price':     return ((a.price||0) - (b.price||0)) * dir;
+      case 'perbottle': return (ingPerBottle(a)||0) - (ingPerBottle(b)||0) * dir;
       case 'peroz': {
         const av = toMl(1, a.unit) !== null ? costPerRecipeUnit(a, 'oz') : 0;
         const bv = toMl(1, b.unit) !== null ? costPerRecipeUnit(b, 'oz') : 0;
@@ -1201,6 +1215,7 @@ function renderIngredients() {
       <td><span class="type-badge">${esc(ing.type||'—')}</span></td>
       <td class="ing-col-qty" style="color:var(--text-lt);">${ing.qty} ${esc(ing.unit)}${isWineEach?' <span style="font-size:10px;color:var(--text-lt);">(750ml ea)</span>':''}</td>
       <td><strong>${fmt2$(ing.price)}</strong></td>
+      <td>${(() => { const pb = ingPerBottle(ing); return pb !== null ? '<strong>'+fmt2$(pb)+'</strong>' : '<span style="color:var(--text-lt);">—</span>'; })()}</td>
       <td style="color:var(--text-lt);font-size:12px;">${esc(ing.vendor||'')}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
     </tr>`;

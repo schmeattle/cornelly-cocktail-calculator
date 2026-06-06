@@ -2354,7 +2354,7 @@ async function addIngToWineList(ingId) {
   showToast(`Added "${details.producer || nameSansVintage}" to Wine List.`);
 }
 
-function deduplicateIngredients() {
+async function deduplicateIngredients() {
   // Step 1: exact-match dedup (instant)
   const groups = {};
   __cache.ingredients.filter(i => i.name).forEach(ing => {

@@ -2766,7 +2766,7 @@ async function _wineHoverOpen(e, wineId) {
     const prompt = `Search the web for the wine producer "${wine.producer}" and the specific wine "${wineLabel}".
 Return ONLY a JSON object, no markdown:
 {
-  "imageUrl": "direct URL to a clear bottle image from the winery website, Wine.com, Vivino, or a wine retailer — must be a .jpg, .png, or .webp URL",
+  "imageUrl": "direct URL to a bottle image — search Wine.com, Vivino, Total Wine, or the winery's own site. Look for CDN image URLs ending in .jpg, .png, or .webp. Vivino CDN URLs (images.vivino.com) and Wine.com CDN URLs work well. Must be a full https:// URL to the image file itself, not a page URL.",
   "producerBio": "2-3 sentence description of the producer/winery — who they are, where they're located, what they're known for",
   "wineNote": "1 sentence about this specific wine or bottling"
 }
@@ -2798,8 +2798,11 @@ If you cannot find a reliable bottle image URL, use empty string for imageUrl.`;
 }
 
 function _renderWinePopover(inner, data, wine) {
-  const img = data.imageUrl
-    ? `<img src="${data.imageUrl}" alt="${esc(wine.producer)}" onerror="this.style.display='none'" />`
+  const proxyUrl = data.imageUrl
+    ? `https://images.weserv.nl/?url=${encodeURIComponent(data.imageUrl)}&w=300&h=200&fit=contain&bg=f7f3ec`
+    : '';
+  const img = proxyUrl
+    ? `<img src="${proxyUrl}" alt="${esc(wine.producer)}" onerror="this.style.display='none'" />`
     : '';
   const bio  = data.producerBio || '';
   const note = data.wineNote    || '';

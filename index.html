@@ -2321,7 +2321,7 @@ function mergeDuplicates(keepId, removeIds) {
 
 let _dedupGroups = [];
 
-async async function addIngToWineList(ingId) {
+async function addIngToWineList(ingId) {
   const ing = __cache.ingredients.find(i => i.id === ingId);
   if (!ing) return;
   showToast('Looking up wine details…');

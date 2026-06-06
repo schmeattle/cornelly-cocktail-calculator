@@ -2770,7 +2770,12 @@ If you cannot find a reliable bottle image URL, use empty string for imageUrl.`;
     });
     const data = await resp.json();
     const textBlock = data.content.filter(b => b.type === 'text').pop();
-    const result = JSON.parse(textBlock.text.trim().replace(/^```json\n?|```$/g,'').trim());
+    if (!textBlock) throw new Error('no text block');
+    const raw = textBlock.text.trim();
+    // Extract JSON even if wrapped in markdown or surrounded by text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('no JSON found');
+    const result = JSON.parse(jsonMatch[0]);
     _wineHoverCache[wineId] = result;
     // Also persist to Firestore so future page loads are instant
     if (result.producerBio) {
@@ -2778,7 +2783,8 @@ If you cannot find a reliable bottle image URL, use empty string for imageUrl.`;
     }
     if (_hoverActive) _renderWinePopover(inner, result, wine);
   } catch(e) {
-    if (_hoverActive) inner.innerHTML = `<div class="pop-body"><div class="pop-producer">${esc(wine.producer)}</div><div class="pop-bio" style="color:var(--red);">Could not load info.</div></div>`;
+    console.warn('Wine hover fetch failed:', e);
+    if (_hoverActive) inner.innerHTML = `<div class="pop-body"><div class="pop-producer">${esc(wine.producer)}</div><div class="pop-bio" style="color:var(--text-lt);">Hover again to retry.</div></div>`;
   }
 }
 

@@ -2762,15 +2762,18 @@ async function _wineHoverOpen(e, wineId) {
 
   // Fetch from Sonnet with web search
   try {
-    const wineLabel = [wine.producer, wine.bottling !== 'N/A' ? wine.bottling : '', wine.vintage].filter(Boolean).join(' ');
-    const prompt = `Search the web for the wine producer "${wine.producer}" and the specific wine "${wineLabel}".
+    const wineLabel = [wine.producer, wine.bottling !== 'N/A' ? wine.bottling : '', wine.varietal, wine.vintage].filter(Boolean).join(' ');
+    const prompt = `Search the web for this specific wine: "${wineLabel}" (${wine.style || 'wine'}, ${wine.region || ''}).
+
+IMPORTANT: This is a ${wine.varietal || wine.style || 'wine'} — make sure ALL information you return is specifically about this wine/bottling, not about other wines the producer makes.
+
 Return ONLY a JSON object, no markdown:
 {
-  "imageUrl": "direct URL to a bottle image — search Wine.com, Vivino, Total Wine, or the winery's own site. Look for CDN image URLs ending in .jpg, .png, or .webp. Vivino CDN URLs (images.vivino.com) and Wine.com CDN URLs work well. Must be a full https:// URL to the image file itself, not a page URL.",
-  "producerBio": "2-3 sentence description of the producer/winery — who they are, where they're located, what they're known for",
-  "wineNote": "1 sentence about this specific wine or bottling"
+  "imageUrl": "Search for this exact wine on Vivino, Wine.com, or Total Wine and return the direct CDN image URL of the bottle photo. Must end in .jpg, .png, or .webp and start with https://. Return empty string if not found.",
+  "producerBio": "2-3 sentences about the producer — who they are, where located, what makes them notable. Focus on facts relevant to this ${wine.style || ''} wine program if they make multiple styles.",
+  "wineNote": "1 sentence specifically about this ${wine.varietal || ''} bottling — flavor profile, winemaking approach, or what makes it distinctive. Do NOT describe their other wines."
 }
-If you cannot find a reliable bottle image URL, use empty string for imageUrl.`;
+Verify: the wineNote must describe a ${wine.style || ''} wine made from ${wine.varietal || 'this grape'}. If the note describes a different style, correct it.`;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

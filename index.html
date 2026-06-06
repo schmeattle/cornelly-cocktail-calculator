@@ -2711,6 +2711,18 @@ function deleteWine() {
 const _wineHoverCache = {};
 let _hoverTimer = null;
 let _hoverActive = false;
+let _hoverClientY = 0;
+
+function _wineRepositionPopover() {
+  const pop = document.getElementById('wine-popover');
+  if (!pop.classList.contains('visible')) return;
+  const popH = pop.scrollHeight;
+  const spaceBelow = window.innerHeight - _hoverClientY;
+  const y = spaceBelow > popH + 16
+    ? _hoverClientY - 20
+    : _hoverClientY - popH - 8;
+  pop.style.top = Math.max(8, y) + 'px';
+}
 
 function wineHoverShow(e, wineId) {
   clearTimeout(_hoverTimer);
@@ -2734,20 +2746,12 @@ async function _wineHoverOpen(e, wineId) {
   const pop   = document.getElementById('wine-popover');
   const inner = document.getElementById('wine-popover-inner');
 
-  // Position popover — anchor to cursor, then nudge if it overflows viewport
+  // Position horizontally; vertical repositioned after content loads
+  _hoverClientY = e.clientY;
   const x = Math.min(e.clientX + 16, window.innerWidth - 316);
   pop.style.left = x + 'px';
-  pop.style.top  = '0px'; // temp, will adjust after render
+  pop.style.top  = Math.max(8, e.clientY - 20) + 'px';
   pop.classList.add('visible');
-  // After content renders, check vertical overflow and reposition
-  requestAnimationFrame(() => {
-    const popH = Math.min(pop.scrollHeight, 420);
-    const spaceBelow = window.innerHeight - e.clientY;
-    const y = spaceBelow > popH + 16
-      ? e.clientY - 20                          // fits below cursor
-      : e.clientY - popH + 20;                  // flip up
-    pop.style.top = Math.max(8, y) + 'px';
-  });
 
   // Show loading state
   if (!_wineHoverCache[wineId]) {
@@ -2757,7 +2761,7 @@ async function _wineHoverOpen(e, wineId) {
   // Serve from cache if available
   if (_wineHoverCache[wineId]) {
     _renderWinePopover(inner, _wineHoverCache[wineId], wine);
-    return;
+    return; // _renderWinePopover calls _wineRepositionPopover internally
   }
 
   // Fetch from Sonnet with web search
@@ -2816,6 +2820,7 @@ function _renderWinePopover(inner, data, wine) {
       ${bio  ? `<div class="pop-bio">${esc(bio)}</div>`  : ''}
       ${note ? `<div class="pop-bio" style="margin-top:6px;font-style:italic;">${esc(note)}</div>` : ''}
     </div>`;
+  requestAnimationFrame(_wineRepositionPopover);
 }
 
 // Pre-load cached popover data from Firestore into memory cache on init

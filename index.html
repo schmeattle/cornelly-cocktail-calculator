@@ -1217,7 +1217,11 @@ function renderIngredients() {
       <td><strong>${fmt2$(ing.price)}</strong></td>
       <td>${(() => { const pb = ingPerBottle(ing); return pb !== null ? '<strong>'+fmt2$(pb)+'</strong>' : '<span style="color:var(--text-lt);">—</span>'; })()}</td>
       <td style="color:var(--text-lt);font-size:12px;">${esc(ing.vendor||'')}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button></td>
+      <td style="display:flex;gap:6px;justify-content:flex-end;">
+        ${ing.type === 'wine' && !__cache.wines.some(w => (w.producer||'').toLowerCase().includes((ing.name||'').toLowerCase().slice(0,8)) || (ing.name||'').toLowerCase().includes((w.producer||'').toLowerCase().slice(0,8)))
+          ? `<button class="btn btn-gold btn-sm" style="white-space:nowrap;font-size:11px;" onclick="addIngToWineList('${esc(ing.id)}')">Add to Wine List</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openIngModal('${esc(ing.id)}')">Edit</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -2317,7 +2321,40 @@ function mergeDuplicates(keepId, removeIds) {
 
 let _dedupGroups = [];
 
-async function deduplicateIngredients() {
+async async function addIngToWineList(ingId) {
+  const ing = __cache.ingredients.find(i => i.id === ingId);
+  if (!ing) return;
+  showToast('Looking up wine details…');
+  const bottleCount = (ing.unit === 'each' || ing.unit === 'case') ? ing.qty : 1;
+  const wholesale   = bottleCount > 0 ? parseFloat((ing.price / bottleCount).toFixed(2)) : ing.price;
+  const vintageMatch = (ing.name||'').match(/\b(19|20)\d{2}\b/);
+  const vintage     = vintageMatch ? vintageMatch[0] : '';
+  // Run Sonnet enrichment
+  let details = {};
+  try {
+    const map = await enrichWineDetails([{ name: ing.name, wineVarietal: '', wineStyle: '' }]);
+    details = map[ing.name] || Object.values(map)[0] || {};
+  } catch(e) { console.warn('Wine enrichment failed:', e); }
+  const nameSansVintage = (ing.name||'').replace(/\b(19|20)\d{2}\b/,'').trim().replace(/\s+/g,' ');
+  const wineId = 'w_' + Date.now() + Math.random().toString(36).slice(2);
+  const wine = {
+    id: wineId,
+    varietal: details.varietal || '',
+    style:    details.style    || '',
+    producer: details.producer || nameSansVintage,
+    bottling: details.bottling || 'N/A',
+    region:   details.region   || '',
+    vintage:  details.vintage  || vintage,
+    wholesale,
+    menuPrice: null,
+  };
+  __cache.wines.push(wine);
+  __db.collection('wine_list').doc(wineId).set(wine).catch(e => console.error(e));
+  renderIngredients();
+  showToast(`Added "${details.producer || nameSansVintage}" to Wine List.`);
+}
+
+function deduplicateIngredients() {
   // Step 1: exact-match dedup (instant)
   const groups = {};
   __cache.ingredients.filter(i => i.name).forEach(ing => {
